@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 import httpx
 import os
 import json
+import subprocess
 from pathlib import Path
 
 app = FastAPI()
@@ -241,6 +242,125 @@ async def save_config_endpoint(request: ConfigRequest):
     
     save_config(config)
     return {"status": "saved"}
+
+# Command execution endpoint
+class CommandRequest(BaseModel):
+    command: str
+
+@app.post("/execute")
+async def execute_command(request: CommandRequest):
+    """Execute a shell command and return the output."""
+    from services.command_service import is_linux_command, execute_command
+    
+    cmd = request.command.strip()
+    
+    # Use the command service to check and execute
+    is_cmd, command = is_linux_command(cmd)
+    
+    if not is_cmd:
+        return {"output": "Not a recognized Linux command", "exit_code": 1, "is_command": False}
+    
+    if command is None:
+        return {"output": "Command blocked for safety", "exit_code": 1, "is_command": True, "is_error": True}
+    
+    result = execute_command(command)
+    return {
+        "output": result["output"],
+        "exit_code": result["exit_code"],
+        "is_command": True,
+        "is_error": result["is_error"]
+    }
+
+# Process prompt - detects command vs LLM, then extracts and runs code from LLM response
+class PromptRequest(BaseModel):
+    prompt: str
+    model: str = "MiniMax-M2.5"
+    messages: List[Dict[str, str]] = []
+
+@app.post("/prompt")
+async def process_prompt(request: PromptRequest):
+    """Process a prompt - execute as command or pass to LLM with code execution."""
+    from services.command_service import is_linux_command, execute_command
+    from services.code_stripper import extract_code_blocks, strip_codes
+    
+    prompt = request.prompt.strip()
+    
+    # Check if it's a command
+    is_cmd, command = is_linux_command(prompt)
+    
+    if is_cmd and command:
+        # Execute command directly
+        result = execute_command(command)
+        return {
+            "type": "command",
+            "output": result["output"],
+            "exit_code": result["exit_code"],
+            "is_error": result["is_error"]
+        }
+    elif is_cmd and command is None:
+        # Blocked command
+        return {
+            "type": "error",
+            "output": "Command blocked for safety reasons"
+        }
+    else:
+        # Pass to LLM - build messages and call API
+        messages = request.messages + [{"role": "user", "content": prompt}]
+        
+        # Get API key
+        if "minimax" in request.model.lower():
+            api_key = get_api_key("minimax")
+            if not api_key:
+                raise HTTPException(status_code=401, detail="MiniMax API key not configured")
+        else:
+            api_key = get_api_key("openai")
+            if not api_key:
+                raise HTTPException(status_code=401, detail="OpenAI API key not configured")
+        
+        # Get provider config
+        config = get_provider_and_headers(request.model, api_key)
+        
+        # Route to appropriate handler
+        if config["provider"] == "minimax_anthropic":
+            llm_result = await call_minimax_anthropic(
+                request.model,
+                messages,
+                0.7,
+                4096,
+                api_key
+            )
+        else:
+            llm_result = await call_openai_compatible(
+                request.model,
+                messages,
+                0.7,
+                4096,
+                config["endpoint"],
+                api_key
+            )
+        
+        llm_output = llm_result["choices"][0]["message"]["content"]
+        
+        # Extract and execute code from LLM response
+        code_blocks = extract_code_blocks(llm_output)
+        execution_results = []
+        
+        for block in code_blocks:
+            exec_result = execute_command(block['code'])
+            execution_results.append({
+                "code": block['code'],
+                "language": block['language'],
+                "output": exec_result["output"],
+                "exit_code": exec_result["exit_code"],
+                "is_error": exec_result["is_error"]
+            })
+        
+        return {
+            "type": "llm",
+            "output": llm_output,
+            "code_blocks": execution_results,
+            "has_code": len(code_blocks) > 0
+        }
 
 # Static files - serve index.html at root
 @app.get("/")
