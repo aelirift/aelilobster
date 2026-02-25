@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import httpx
 import os
 import json
+from pathlib import Path
 
 app = FastAPI()
 
@@ -17,9 +19,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuration
-MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+# Configuration file path
+CONFIG_FILE = Path(__file__).parent / "config.json"
+
+# Load config from file
+def load_config() -> Dict[str, Any]:
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+# Save config to file
+def save_config(config: Dict[str, Any]) -> None:
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=2)
+
+# Get API keys from config or environment
+def get_api_key(provider: str) -> str:
+    config = load_config()
+    if provider.lower() == "minimax":
+        return config.get("minimax_api_key", os.getenv("MINIMAX_API_KEY", ""))
+    elif provider.lower() == "openai":
+        return config.get("openai_api_key", os.getenv("OPENAI_API_KEY", ""))
+    return ""
 
 class Message(BaseModel):
     role: str
@@ -145,15 +170,15 @@ async def call_openai_compatible(model: str, messages: List[Dict], temperature: 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatRequest):
     """Handle chat completion requests."""
-    # Get API key - prefer MiniMax if model contains minimax
+    # Get API key from config or environment
     if "minimax" in request.model.lower():
-        if not MINIMAX_API_KEY:
+        api_key = get_api_key("minimax")
+        if not api_key:
             raise HTTPException(status_code=401, detail="MiniMax API key not configured")
-        api_key = MINIMAX_API_KEY
     else:
-        if not OPENAI_API_KEY:
+        api_key = get_api_key("openai")
+        if not api_key:
             raise HTTPException(status_code=401, detail="OpenAI API key not configured")
-        api_key = OPENAI_API_KEY
     
     # Get provider configuration
     config = get_provider_and_headers(request.model, api_key)
@@ -185,6 +210,51 @@ async def chat_completions(request: ChatRequest):
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+# Config endpoints
+class ConfigRequest(BaseModel):
+    minimax_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    default_model: Optional[str] = None
+
+@app.get("/config")
+async def get_config():
+    """Get current configuration (without exposing API keys)."""
+    config = load_config()
+    return {
+        "has_minimax_key": bool(config.get("minimax_api_key")),
+        "has_openai_key": bool(config.get("openai_api_key")),
+        "default_model": config.get("default_model", "MiniMax-M2.5")
+    }
+
+@app.post("/config")
+async def save_config_endpoint(request: ConfigRequest):
+    """Save configuration."""
+    config = load_config()
+    
+    if request.minimax_api_key is not None:
+        config["minimax_api_key"] = request.minimax_api_key
+    if request.openai_api_key is not None:
+        config["openai_api_key"] = request.openai_api_key
+    if request.default_model is not None:
+        config["default_model"] = request.default_model
+    
+    save_config(config)
+    return {"status": "saved"}
+
+# Static files - serve index.html at root
+@app.get("/")
+async def serve_index():
+    return FileResponse("static/index.html")
+
+@app.get("/config.html")
+async def serve_config():
+    return FileResponse("static/config.html")
+
+# Static files
+@app.get("/static/{file_path:path}")
+async def serve_static(file_path: str):
+    return FileResponse(f"static/{file_path}")
 
 if __name__ == "__main__":
     import uvicorn
