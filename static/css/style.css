@@ -114,6 +114,12 @@ body {
     height: 100%;
 }
 
+/* Files page two panel */
+.main-content .files-two-panel {
+    flex: 1;
+    overflow: hidden;
+}
+
 /* Chat Container */
 .chat-container {
     flex: 1;
@@ -771,7 +777,77 @@ body {
     margin: 4px 0;
 }
 
+/* Context Files Page - Two Panel Layout */
+.files-two-panel {
+    display: flex;
+    gap: 24px;
+    padding: 20px;
+    height: 100%;
+    overflow: hidden;
+}
+
+.files-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+}
+
+.files-list-panel {
+    flex: 0 0 300px;
+    min-width: 280px;
+}
+
+.files-editor-panel {
+    flex: 1;
+}
+
+.button-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* File List Items */
+.file-type-group {
+    margin-bottom: 16px;
+}
+
+.file-type-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.file-list-item {
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 4px;
+}
+
+.file-list-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.file-list-item.selected {
+    background-color: var(--accent);
+    color: white;
+}
+
 /* Context Files Page */
+.config-container {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding-bottom: 40px;
+}
+
 .add-file-form {
     background-color: var(--bg-secondary);
     padding: 20px;

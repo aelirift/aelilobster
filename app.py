@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import httpx
@@ -103,30 +103,60 @@ async def call_minimax_anthropic(model: str, messages: List[Dict], temperature: 
     """Call MiniMax 2.5 using Anthropic-compatible endpoint."""
     endpoint = "https://api.minimax.io/anthropic/v1/messages"
     
-    # Convert messages to Anthropic format
-    anthropic_messages = []
+    # Debug: log the model being used
+    print(f"[DEBUG] MiniMax model: {model}")
+    
+    # Use model as-is (user specifies the correct model name)
+    api_model = model
+    
+    # Extract system messages and combine them
+    system_content = ""
+    user_messages = []
+    
     for msg in messages:
-        anthropic_messages.append({
-            "role": msg["role"],
-            "content": msg["content"]
-        })
+        if msg.get("role") == "system":
+            # Combine all system messages
+            if system_content:
+                system_content += "\n\n"
+            system_content += msg.get("content", "")
+        else:
+            # For user messages, wrap content in the required format
+            user_messages.append({
+                "role": msg["role"],
+                "content": [{"type": "text", "text": msg["content"]}]
+            })
     
     payload = {
-        "model": model,
-        "messages": anthropic_messages,
+        "model": api_model,
         "max_tokens": max_tokens,
-        "temperature": temperature
+        "temperature": float(temperature)
     }
+    
+    # Add system if present
+    if system_content:
+        payload["system"] = system_content
+    
+    # Add messages
+    if user_messages:
+        payload["messages"] = user_messages
     
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     
+    # Debug: log the full payload
+    print(f"[DEBUG] MiniMax payload: {json.dumps(payload)}")
+    
     async with httpx.AsyncClient() as client:
-        response = await client.post(endpoint, json=payload, headers=headers, timeout=60.0)
-        response.raise_for_status()
-        result = response.json()
+        try:
+            response = await client.post(endpoint, json=payload, headers=headers, timeout=60.0)
+            if response.status_code != 200:
+                error_detail = response.text
+                raise Exception(f"MiniMax API error {response.status_code}: {error_detail}")
+            result = response.json()
+        except httpx.HTTPStatusError as e:
+            raise Exception(f"MiniMax API error: {e.response.status_code} - {e.response.text}")
         
         # Parse Anthropic response format
         content_blocks = result.get("content", [])
@@ -399,6 +429,8 @@ class LooperRequest(BaseModel):
     model: str = "MiniMax-M2.5"
     messages: List[Dict[str, str]] = []
     project_id: Optional[str] = None
+    user_name: Optional[str] = None
+    project_name: Optional[str] = None
 
 
 def get_llm_call_function(model: str, api_key: str):
@@ -421,11 +453,24 @@ async def run_looper(request: LooperRequest):
     
     # Get project path if project_id is provided
     project_path = None
+    user_name = request.user_name
+    project_name = request.project_name
+    
     if request.project_id:
         parts = request.project_id.split("_", 1)
         if len(parts) == 2:
             user, name = parts
             project_path = str(PROJECTS_DIR / user / name)
+            # Use project_id parts as user_name and project_name if not provided
+            if not user_name:
+                user_name = user
+            if not project_name:
+                project_name = name
+    
+    # Use default user from config if not provided
+    if not user_name:
+        config = load_config()
+        user_name = config.get("default_user", "default")
     
     # Get API key
     if "minimax" in request.model.lower():
@@ -451,7 +496,9 @@ async def run_looper(request: LooperRequest):
         project_path=project_path,
         call_llm_func=call_llm_func,
         context_files=context_files,
-        trace_callback=None
+        trace_callback=None,
+        user_name=user_name,
+        project_name=project_name
     )
     
     return result
@@ -466,6 +513,38 @@ async def stop_looper():
     state.stop()
     
     return {"status": "stopped", "was_running": state.is_running}
+
+
+@app.get("/api/looper/trace-stream")
+async def trace_stream():
+    """
+    Server-Sent Events endpoint for real-time trace updates.
+    Frontend connects to this to receive trace entries as they're generated.
+    """
+    from services.looper import trace_logger, get_looper_state
+    import asyncio
+    
+    async def event_generator():
+        last_index = 0
+        state = get_looper_state()
+        
+        while state.is_running or last_index < len(trace_logger.entries):
+            # Check for new entries
+            current_entries = trace_logger.entries
+            if last_index < len(current_entries):
+                # Send new entries
+                new_entries = current_entries[last_index:]
+                for entry in new_entries:
+                    yield f"data: {json.dumps(entry)}\n\n"
+                    last_index += 1
+            
+            # Small delay to avoid tight loop
+            await asyncio.sleep(0.5)
+        
+        # Send done signal
+        yield f"data: {json.dumps({'type': 'done', 'label': 'Stream Complete', 'data': {}})}\n\n"
+    
+    return StreamingResponse(event_generator(), media_type="text/eventing-stream")
 
 
 # Static files - serve index.html at root
@@ -714,6 +793,22 @@ async def run_pod_test(request: RunPodRequest):
     
     result = run_code_in_pod(request.code, project_path)
     return result
+
+
+# Kill Pod API
+class KillPodRequest(BaseModel):
+    user_name: str
+    project_name: str
+
+
+@app.post("/api/kill-pod")
+async def kill_pod_endpoint(request: KillPodRequest):
+    """Kill a pod by user and project name."""
+    from services.run_pod_test import kill_pod
+    
+    result = kill_pod(request.user_name, request.project_name)
+    return result
+
 
 # Static files
 @app.get("/static/{file_path:path}")

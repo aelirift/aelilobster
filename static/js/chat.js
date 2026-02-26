@@ -428,6 +428,9 @@ async function sendMessage() {
     `;
     scrollToBottom();
     
+    // Declare traceEventSource outside try block so it can be accessed in catch
+    let traceEventSource;
+    
     try {
         // TRACE: User input
         addTrace('input', 'User Input', {
@@ -446,6 +449,23 @@ async function sendMessage() {
         const projectSelect = document.getElementById('headerProject');
         const projectId = projectSelect ? projectSelect.value : null;
         
+        // Start SSE connection for real-time trace updates BEFORE making the request
+        const traceEventSource = new EventSource('/api/looper/trace-stream');
+        
+        traceEventSource.onmessage = function(event) {
+            const entry = JSON.parse(event.data);
+            if (entry.type === 'done') {
+                traceEventSource.close();
+            } else {
+                // Add trace entry in real-time
+                addTrace(entry.type, entry.label, entry.data);
+            }
+        };
+        
+        traceEventSource.onerror = function() {
+            traceEventSource.close();
+        };
+        
         const response = await fetch('/api/looper/run', {
             method: 'POST',
             headers: {
@@ -462,11 +482,20 @@ async function sendMessage() {
         });
         
         if (!response.ok) {
+            // Close trace stream on error
+            if (traceEventSource) {
+                traceEventSource.close();
+            }
             const error = await response.json();
             throw new Error(error.detail || 'Failed to get response');
         }
         
         const data = await response.json();
+        
+        // Close the trace stream
+        if (traceEventSource) {
+            traceEventSource.close();
+        }
         
         // Set looping to false since looper finished
         setLoopingState(false);
@@ -530,10 +559,24 @@ async function sendMessage() {
             });
         }
         
+        // Display trace entries from looper
+        if (data.trace_entries && data.trace_entries.length > 0) {
+            // Clear existing trace and show looper trace
+            clearTrace();
+            data.trace_entries.forEach(entry => {
+                addTrace(entry.type, entry.label, entry.data);
+            });
+        }
+        
         renderMessages();
         saveState();
         
     } catch (error) {
+        // Close trace stream on exception
+        if (traceEventSource) {
+            traceEventSource.close();
+        }
+        
         // Reset looping state
         setLoopingState(false);
         

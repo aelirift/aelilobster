@@ -5,55 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Context Files</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { overflow: auto; }
+        .files-page { display: flex; gap: 20px; padding: 20px; height: calc(100vh - 60px); }
+        .files-sidebar { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+        .files-sidebar-header { display: flex; justify-content: space-between; align-items: center; }
+        .files-sidebar-header h3 { margin: 0; font-size: 16px; }
+        .files-list-mini { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .file-item-mini { padding: 10px 12px; background: var(--bg-secondary); border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .file-item-mini:hover { border-color: var(--accent); }
+        .file-item-mini.active { background: var(--accent); color: white; }
+        .file-item-mini .file-type-badge { float: right; font-size: 10px; opacity: 0.7; }
+        .files-editor { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+        .files-editor textarea { flex: 1; min-height: 300px; font-family: monospace; }
+        .files-editor .form-row { display: flex; gap: 12px; }
+        .files-editor .form-row .form-group { flex: 1; }
+    </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- Left Navigation (Shared) -->
+        <!-- Left Navigation -->
         <div id="leftNaviContainer" data-current-page="files"></div>
 
         <!-- Main Content -->
         <main class="main-content">
-            <div class="config-container">
-                <h2>Context Files</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">
-                    Add markdown files to be used as context for AI prompts. Files are saved as .md in the context_files folder.
-                </p>
-                
-                <!-- Add New File Form -->
-                <div class="add-file-form">
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="fileName">File Name</label>
-                            <input 
-                                type="text" 
-                                id="fileName" 
-                                placeholder="e.g., project-context, coding-standards"
-                            >
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="fileType">Type</label>
-                            <select id="fileType">
-                                <!-- Options will be populated by JavaScript -->
-                            </select>
-                        </div>
+            <div class="files-page">
+                <!-- Left Sidebar: File List -->
+                <div class="files-sidebar">
+                    <div class="files-sidebar-header">
+                        <h3>Context Files</h3>
+                        <button class="save-button" onclick="newFile()" style="padding: 6px 12px; font-size: 12px;">+ New</button>
                     </div>
-                    <div class="form-group">
-                        <label for="fileContent">Markdown Content</label>
-                        <textarea 
-                            id="fileContent" 
-                            placeholder="Paste your markdown content here..."
-                            rows="10"
-                        ></textarea>
-                    </div>
-                    <button type="button" id="addFileBtn" class="save-button">Add File</button>
+                    <div id="filesList" class="files-list-mini"></div>
                 </div>
 
-                <!-- Files List -->
-                <div id="filesList" class="files-list">
-                    <!-- Files will be rendered here -->
+                <!-- Right: Editor -->
+                <div class="files-editor">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>File Name</label>
+                            <input type="text" id="fileName" placeholder="filename">
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="fileType"></select>
+                        </div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column;">
+                        <label>Content</label>
+                        <textarea id="fileContent" style="flex: 1; min-height: 400px;" placeholder="Enter context content..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="save-button" id="saveFileBtn">Save</button>
+                        <button class="save-button" id="deleteFileBtn" style="background: #f44336;">Delete</button>
+                    </div>
+                    <div id="statusMessage" class="config-status" style="display: none;"></div>
                 </div>
-                
-                <div id="statusMessage" class="config-status" style="display: none;"></div>
             </div>
         </main>
     </div>
