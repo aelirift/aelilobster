@@ -572,7 +572,7 @@ async def trace_stream():
         # Send done signal
         yield f"data: {json.dumps({'type': 'done', 'label': 'Stream Complete', 'data': {}})}\n\n"
     
-    return StreamingResponse(event_generator(), media_type="text/eventing-stream")
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 # Static files - serve index.html at root
