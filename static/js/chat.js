@@ -10,27 +10,46 @@ const traceClear = document.getElementById('traceClear');
 let messages = [];
 let isLoading = false;
 let traceId = 0;
+let traceEntries = []; // Store trace entries for session persistence
 
 // Trace logging functions
 function addTrace(type, label, data) {
-    const entry = document.createElement('div');
-    entry.className = 'trace-entry';
-    
     const now = new Date();
     const timeStr = now.toLocaleTimeString();
     
+    // Store in trace entries for persistence
+    const traceEntry = {
+        type,
+        label,
+        data,
+        time: timeStr,
+        timestamp: now.toISOString()
+    };
+    traceEntries.push(traceEntry);
+    
+    renderTraceEntry(traceEntry, false);
+    
+    // Save to localStorage
+    saveTraceState();
+}
+
+function renderTraceEntry(entry, isInitial) {
+    const traceContent = document.getElementById('traceContent');
+    const domEntry = document.createElement('div');
+    domEntry.className = 'trace-entry';
+    
     let dataHtml = '';
-    if (typeof data === 'object') {
-        dataHtml = `<div class="trace-data">${escapeHtml(JSON.stringify(data, null, 2))}</div>`;
+    if (typeof entry.data === 'object') {
+        dataHtml = `<div class="trace-data">${escapeHtml(JSON.stringify(entry.data, null, 2))}</div>`;
     } else {
-        dataHtml = `<div class="trace-data">${escapeHtml(String(data))}</div>`;
+        dataHtml = `<div class="trace-data">${escapeHtml(String(entry.data))}</div>`;
     }
     
-    entry.innerHTML = `
-        <div class="trace-time">${timeStr}</div>
+    domEntry.innerHTML = `
+        <div class="trace-time">${entry.time}</div>
         <div class="trace-step">
-            <div class="trace-icon ${type}">${type === 'input' ? '↓' : type === 'process' ? '⚙' : type === 'output' ? '↑' : '!'}</div>
-            <div class="trace-text">${escapeHtml(label)}</div>
+            <div class="trace-icon ${entry.type}">${entry.type === 'input' ? '↓' : entry.type === 'process' ? '⚙' : entry.type === 'output' ? '↑' : '!'}</div>
+            <div class="trace-text">${escapeHtml(entry.label)}</div>
         </div>
         ${dataHtml}
     `;
@@ -41,8 +60,12 @@ function addTrace(type, label, data) {
         emptyState.remove();
     }
     
-    traceContent.appendChild(entry);
-    traceContent.scrollTop = traceContent.scrollHeight;
+    traceContent.appendChild(domEntry);
+    
+    // Only scroll to bottom for new entries, not during initial load
+    if (!isInitial) {
+        traceContent.scrollTop = traceContent.scrollHeight;
+    }
 }
 
 function clearTrace() {
@@ -51,6 +74,40 @@ function clearTrace() {
             <p style="font-size: 12px;">Waiting for input...</p>
         </div>
     `;
+    traceEntries = [];
+    saveTraceState();
+}
+
+// Save trace entries to localStorage
+function saveTraceState() {
+    localStorage.setItem('chatTraceEntries', JSON.stringify(traceEntries));
+}
+
+// Load trace entries from localStorage
+function loadTraceState() {
+    const saved = localStorage.getItem('chatTraceEntries');
+    if (saved) {
+        try {
+            traceEntries = JSON.parse(saved);
+            // Re-render all trace entries
+            const traceContent = document.getElementById('traceContent');
+            traceContent.innerHTML = '';
+            
+            if (traceEntries.length === 0) {
+                traceContent.innerHTML = `
+                    <div class="empty-state" style="padding: 20px;">
+                        <p style="font-size: 12px;">Waiting for input...</p>
+                    </div>
+                `;
+            } else {
+                traceEntries.forEach(entry => {
+                    renderTraceEntry(entry, true);
+                });
+            }
+        } catch (e) {
+            traceEntries = [];
+        }
+    }
 }
 
 traceClear.addEventListener('click', clearTrace);
@@ -71,13 +128,58 @@ function loadState() {
             messages = [];
         }
     }
+    
+    // Load projects and set selected project
+    loadProjects();
+    
+    // Check URL for project parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectParam = urlParams.get('project');
+    if (projectParam) {
+        const projectSelect = document.getElementById('headerProject');
+        projectSelect.value = projectParam;
+        localStorage.setItem('selectedProject', projectParam);
+    } else {
+        const savedProject = localStorage.getItem('selectedProject');
+        if (savedProject) {
+            const projectSelect = document.getElementById('headerProject');
+            projectSelect.value = savedProject;
+        }
+    }
+}
+
+// Load projects from API
+async function loadProjects() {
+    try {
+        const response = await fetch('/api/projects');
+        const projects = await response.json();
+        
+        const projectSelect = document.getElementById('headerProject');
+        projectSelect.innerHTML = '<option value="">Select Project</option>';
+        
+        projects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.id;
+            option.textContent = `${project.name} (${project.user})`;
+            projectSelect.appendChild(option);
+        });
+    } catch (e) {
+        console.error('Failed to load projects:', e);
+    }
 }
 
 // Save state to localStorage
 function saveState() {
     localStorage.setItem('selectedModel', modelSelect.value);
     localStorage.setItem('chatMessages', JSON.stringify(messages));
+    
+    const projectSelect = document.getElementById('headerProject');
+    if (projectSelect) {
+        localStorage.setItem('selectedProject', projectSelect.value);
+    }
 }
+
+// Load trace entries
 
 // Toggle collapsible command output
 function toggleCommandOutput(element) {
@@ -98,6 +200,9 @@ function renderMessages() {
         `;
         return;
     }
+    
+    // Track if user has scrolled up - don't auto-scroll if reading history
+    let userScrolledUp = false;
     
     messagesContainer.innerHTML = messages.map((msg, index) => {
         if (msg.type === 'command') {
@@ -168,11 +273,22 @@ function renderMessages() {
     scrollToBottom();
 }
 
-// Scroll to bottom of messages
-function scrollToBottom() {
+// Scroll to bottom of messages (only if user is near bottom or hasn't scrolled up)
+function scrollToBottom(force = false) {
     setTimeout(() => {
         requestAnimationFrame(() => {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            const container = messagesContainer;
+            // If force is true, always scroll
+            // If user hasn't scrolled up manually, check if near bottom
+            // This allows users to scroll up to see history without being forced to bottom
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+            if (force || !userHasScrolledUp || isNearBottom) {
+                container.scrollTop = container.scrollHeight;
+                // Reset userHasScrolledUp after scrolling to bottom
+                if (isNearBottom) {
+                    userHasScrolledUp = false;
+                }
+            }
         });
     }, 50);
 }
@@ -359,6 +475,22 @@ messageInput.addEventListener('input', () => {
 
 // Model change - save selection
 modelSelect.addEventListener('change', saveState);
+
+// Project selection change - save
+const projectSelect = document.getElementById('headerProject');
+if (projectSelect) {
+    projectSelect.addEventListener('change', saveState);
+}
+
+// Track when user scrolls up manually
+let userHasScrolledUp = false;
+messagesContainer.addEventListener('scroll', () => {
+    const container = messagesContainer;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    if (!isNearBottom) {
+        userHasScrolledUp = true;
+    }
+});
 
 // Load state on page load
 loadState();

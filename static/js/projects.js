@@ -1,0 +1,182 @@
+// Projects management
+const projectNameInput = document.getElementById('projectName');
+const createProjectBtn = document.getElementById('createProjectBtn');
+const createStatus = document.getElementById('createStatus');
+const projectsList = document.getElementById('projectsList');
+const statusMessage = document.getElementById('statusMessage');
+
+const CURRENT_USER = 'test_user';
+let editingProjectId = null;
+
+// Load projects from server on page load
+async function loadProjects() {
+    try {
+        const response = await fetch('/api/projects');
+        if (!response.ok) throw new Error('Failed to load projects');
+        
+        const projects = await response.json();
+        renderProjects(projects);
+    } catch (error) {
+        showStatus('Failed to load projects: ' + error.message, 'error');
+    }
+}
+
+// Render projects list
+function renderProjects(projects) {
+    if (projects.length === 0) {
+        projectsList.innerHTML = `
+            <div class="empty-state" style="padding: 40px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 48px; height: 48px;">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <p style="margin-top: 16px;">No projects yet</p>
+                <p style="font-size: 12px; margin-top: 8px; opacity: 0.7;">Create a new project above to get started</p>
+            </div>
+        `;
+        return;
+    }
+    
+    projectsList.innerHTML = projects.map(project => `
+        <div class="project-card" data-id="${project.id}">
+            <div class="project-header">
+                <div class="project-info">
+                    <span class="project-name">${escapeHtml(project.name)}</span>
+                    <span class="project-user">${escapeHtml(project.user)}</span>
+                </div>
+                <div class="project-actions">
+                    <button class="project-action-btn use-btn" onclick="openProject('${project.id}')" title="Open project">
+                        Open
+                    </button>
+                    <button class="project-action-btn run-btn" onclick="runInPod('${project.id}')" title="Run in Pod">
+                        Run in Pod
+                    </button>
+                    <button class="project-action-btn delete-btn" onclick="deleteProject('${project.id}')" title="Delete">
+                        Delete
+                    </button>
+                </div>
+            </div>
+            <div class="project-path">${escapeHtml(project.path)}</div>
+        </div>
+    `).join('');
+}
+
+// Create new project
+async function createProject() {
+    const name = projectNameInput.value.trim();
+    
+    if (!name) {
+        showCreateStatus('Please enter a project name', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, user: CURRENT_USER })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to create project');
+        }
+        
+        showCreateStatus('Project created successfully', 'success');
+        projectNameInput.value = '';
+        loadProjects();
+    } catch (error) {
+        showCreateStatus(error.message, 'error');
+    }
+}
+
+// Delete project
+async function deleteProject(id) {
+    if (!confirm('Are you sure you want to delete this project? This will also delete the project folder.')) return;
+    
+    try {
+        const response = await fetch(`/api/projects/${id}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) throw new Error('Failed to delete project');
+        
+        showStatus('Project deleted', 'success');
+        loadProjects();
+    } catch (error) {
+        showStatus('Failed to delete project: ' + error.message, 'error');
+    }
+}
+
+// Open project - redirect to chat with project context
+function openProject(id) {
+    localStorage.setItem('selectedProject', id);
+    window.location.href = '/?project=' + id;
+}
+
+// Run code in pod
+async function runInPod(projectId) {
+    const code = prompt('Enter the code to run in the pod:');
+    if (!code) return;
+    
+    showStatus('Running code in pod...', 'success');
+    
+    try {
+        const response = await fetch('/api/run-pod-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                project_id: projectId, 
+                code: code 
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to run in pod');
+        }
+        
+        const result = await response.json();
+        alert('Pod execution result:\n\n' + result.output);
+        showStatus('Code executed successfully', 'success');
+    } catch (error) {
+        showStatus('Failed to run in pod: ' + error.message, 'error');
+    }
+}
+
+// Show create status message
+function showCreateStatus(message, type) {
+    createStatus.textContent = message;
+    createStatus.className = 'config-status ' + type;
+    createStatus.style.display = 'block';
+    
+    setTimeout(() => {
+        createStatus.style.display = 'none';
+    }, 3000);
+}
+
+// Show status message
+function showStatus(message, type) {
+    statusMessage.textContent = message;
+    statusMessage.className = 'config-status ' + type;
+    statusMessage.style.display = 'block';
+    
+    setTimeout(() => {
+        statusMessage.style.display = 'none';
+    }, 3000);
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Event listeners
+createProjectBtn.addEventListener('click', createProject);
+projectNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') createProject();
+});
+
+// Initialize
+loadProjects();

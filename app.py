@@ -371,6 +371,244 @@ async def serve_index():
 async def serve_config():
     return FileResponse("static/config.html")
 
+@app.get("/files.html")
+async def serve_files():
+    return FileResponse("static/files.html")
+
+# Context Files - Folder-based storage
+CONTEXT_FILES_DIR = Path(__file__).parent / "context_files"
+FILE_TYPES_FILE = CONTEXT_FILES_DIR / "file_types.json"
+
+# Create the context_files directory if it doesn't exist
+CONTEXT_FILES_DIR.mkdir(exist_ok=True)
+
+# Default file types (permanent list)
+DEFAULT_FILE_TYPES = [
+    "pre-llm",
+    "post-llm",
+    "pre-code",
+    "post-code",
+    "pre-pod",
+    "post-pod",
+    "pre-execute",
+    "post-execute",
+    "pre-display"
+]
+
+def get_file_types() -> List[str]:
+    """Get the list of file types (creates file if not exists)."""
+    if FILE_TYPES_FILE.exists():
+        try:
+            with open(FILE_TYPES_FILE, "r") as f:
+                return json.load(f)
+        except:
+            pass
+    # Create the file with default types
+    with open(FILE_TYPES_FILE, "w") as f:
+        json.dump(DEFAULT_FILE_TYPES, f, indent=2)
+    return DEFAULT_FILE_TYPES
+
+def load_context_files() -> List[Dict[str, Any]]:
+    """Load context files metadata from folder."""
+    files = []
+    for md_file in CONTEXT_FILES_DIR.glob("*.md"):
+        if md_file.name == "file_types.json":
+            continue
+        try:
+            with open(md_file, "r") as f:
+                content = f.read()
+            # Parse metadata from filename: {id}_{type}_{name}.md
+            stem = md_file.stem
+            parts = stem.split("_", 2)
+            if len(parts) >= 3:
+                file_id = parts[0]
+                file_type = parts[1]
+                name = parts[2]
+            else:
+                file_id = stem
+                file_type = "pre-llm"
+                name = stem
+            files.append({
+                "id": file_id,
+                "name": name,
+                "type": file_type,
+                "content": content
+            })
+        except:
+            pass
+    return files
+
+def save_context_file(file_id: str, file_type: str, name: str, content: str) -> None:
+    """Save a context file to disk as .md file."""
+    # Sanitize name for filename
+    safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip()
+    if not safe_name:
+        safe_name = "untitled"
+    filename = f"{file_id}_{file_type}_{safe_name}.md"
+    filepath = CONTEXT_FILES_DIR / filename
+    with open(filepath, "w") as f:
+        f.write(content)
+
+def delete_context_file(file_id: str) -> bool:
+    """Delete a context file from disk."""
+    for md_file in CONTEXT_FILES_DIR.glob("*.md"):
+        if md_file.stem.startswith(file_id + "_"):
+            md_file.unlink()
+            return True
+    return False
+
+class ContextFile(BaseModel):
+    name: str
+    type: str
+    content: str
+
+@app.get("/api/file-types")
+async def get_file_types_endpoint():
+    """Get the list of file types."""
+    return get_file_types()
+
+@app.get("/api/context-files")
+async def get_context_files():
+    """Get all context files."""
+    return load_context_files()
+
+@app.post("/api/context-files")
+async def add_context_file(file: ContextFile):
+    """Add a new context file."""
+    file_id = str(int(os.urandom(4).hex(), 16))
+    save_context_file(file_id, file.type, file.name, file.content)
+    return {
+        "id": file_id,
+        "name": file.name,
+        "type": file.type,
+        "content": file.content
+    }
+
+@app.put("/api/context-files/{file_id}")
+async def update_context_file(file_id: str, file: ContextFile):
+    """Update an existing context file."""
+    # Delete old file and create new one
+    delete_context_file(file_id)
+    save_context_file(file_id, file.type, file.name, file.content)
+    return {
+        "id": file_id,
+        "name": file.name,
+        "type": file.type,
+        "content": file.content
+    }
+
+@app.delete("/api/context-files/{file_id}")
+async def delete_context_file_endpoint(file_id: str):
+    """Delete a context file."""
+    delete_context_file(file_id)
+    return {"status": "deleted"}
+
+# Projects API
+PROJECTS_DIR = Path(__file__).parent / "user_login"
+
+class ProjectRequest(BaseModel):
+    name: str
+    user: str
+
+def load_projects() -> List[Dict[str, Any]]:
+    """Load projects from folders."""
+    projects = []
+    if not PROJECTS_DIR.exists():
+        return projects
+    
+    for user_dir in PROJECTS_DIR.iterdir():
+        if user_dir.is_dir():
+            user_name = user_dir.name
+            for project_dir in user_dir.iterdir():
+                if project_dir.is_dir():
+                    projects.append({
+                        "id": f"{user_name}_{project_dir.name}",
+                        "name": project_dir.name,
+                        "user": user_name,
+                        "path": str(project_dir)
+                    })
+    return projects
+
+def create_project_folder(user: str, name: str) -> Dict[str, Any]:
+    """Create a new project folder."""
+    user_dir = PROJECTS_DIR / user
+    project_dir = user_dir / name
+    
+    if project_dir.exists():
+        raise HTTPException(status_code=400, detail="Project already exists")
+    
+    project_dir.mkdir(parents=True, exist_ok=True)
+    
+    return {
+        "id": f"{user}_{name}",
+        "name": name,
+        "user": user,
+        "path": str(project_dir)
+    }
+
+def delete_project_folder(user: str, name: str) -> bool:
+    """Delete a project folder."""
+    project_dir = PROJECTS_DIR / user / name
+    if project_dir.exists():
+        import shutil
+        shutil.rmtree(project_dir)
+        return True
+    return False
+
+@app.get("/projects.html")
+async def serve_projects():
+    return FileResponse("static/projects.html")
+
+@app.get("/api/projects")
+async def get_projects():
+    """Get all projects."""
+    return load_projects()
+
+@app.post("/api/projects")
+async def create_project(request: ProjectRequest):
+    """Create a new project."""
+    # Check if project already exists
+    existing = load_projects()
+    for p in existing:
+        if p["name"] == request.name and p["user"] == request.user:
+            raise HTTPException(status_code=400, detail="Project already exists")
+    
+    return create_project_folder(request.user, request.name)
+
+@app.delete("/api/projects/{project_id}")
+async def delete_project(project_id: str):
+    """Delete a project."""
+    # Parse user and name from project_id (format: user_name)
+    parts = project_id.split("_", 1)
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
+    
+    user, name = parts
+    if delete_project_folder(user, name):
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Project not found")
+
+# Run Pod Test API
+class RunPodRequest(BaseModel):
+    project_id: str
+    code: str
+
+@app.post("/api/run-pod-test")
+async def run_pod_test(request: RunPodRequest):
+    """Run code in an isolated pod."""
+    from services.run_pod_test import run_code_in_pod
+    
+    # Get project path
+    project_path = None
+    if request.project_id:
+        parts = request.project_id.split("_", 1)
+        if len(parts) == 2:
+            user, name = parts
+            project_path = str(PROJECTS_DIR / user / name)
+    
+    result = run_code_in_pod(request.code, project_path)
+    return result
+
 # Static files
 @app.get("/static/{file_path:path}")
 async def serve_static(file_path: str):

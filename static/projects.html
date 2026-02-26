@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Navigation (Shared) -->
+        <div id="leftNaviContainer" data-current-page="projects"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="config-container">
+                <h2>Projects</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">
+                    Manage your projects. Each project has its own folder for code execution and testing.
+                </p>
+
+                <!-- User Info (Read-only) -->
+                <div class="user-info">
+                    <span class="user-label">User:</span>
+                    <span class="user-name">test_user</span>
+                </div>
+                
+                <!-- Add New Project Form -->
+                <div class="add-project-form">
+                    <div class="form-group">
+                        <label for="projectName">New Project Name</label>
+                        <div class="input-with-button">
+                            <input 
+                                type="text" 
+                                id="projectName" 
+                                placeholder="Enter project name"
+                            >
+                            <button type="button" id="createProjectBtn" class="save-button">Create</button>
+                        </div>
+                    </div>
+                    <div id="createStatus" class="config-status" style="display: none;"></div>
+                </div>
+
+                <!-- Projects List -->
+                <div id="projectsList" class="projects-list">
+                    <!-- Projects will be rendered here -->
+                </div>
+                
+                <div id="statusMessage" class="config-status" style="display: none;"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/left_navi_panel.js"></script>
+    <script src="/static/js/projects.js"></script>
+</body>
+</html>

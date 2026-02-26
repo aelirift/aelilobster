@@ -11,12 +11,16 @@ def extract_code_blocks(text: str) -> List[Dict[str, Any]]:
     Extract code blocks from LLM response.
     
     Returns list of code blocks with their language and content.
+    Filters out duplicates where inline commands are already in fenced blocks.
     """
     code_blocks = []
     
     # Pattern for fenced code blocks (```language ... ```)
+    # This is the standard way LLMs return code
     fenced_pattern = r'```(\w*)\n?(.*?)```'
     matches = re.findall(fenced_pattern, text, re.DOTALL)
+    
+    fenced_codes = []  # Store fenced codes for duplicate detection
     
     for lang, code in matches:
         if code.strip():
@@ -25,6 +29,7 @@ def extract_code_blocks(text: str) -> List[Dict[str, Any]]:
                 'code': code.strip(),
                 'type': 'fenced'
             })
+            fenced_codes.append(code.strip())
     
     # Pattern for inline code that looks like shell commands
     # Lines starting with $ or > at the start
@@ -34,13 +39,16 @@ def extract_code_blocks(text: str) -> List[Dict[str, Any]]:
         match = re.match(inline_pattern, line.strip())
         if match:
             cmd = match.group(1).strip()
-            # Only add if it looks like a command
+            # Only add if it looks like a command and is not already in a fenced block
             if cmd and not cmd.startswith('#'):
-                code_blocks.append({
-                    'language': 'shell',
-                    'code': cmd,
-                    'type': 'inline'
-                })
+                # Check if this inline command is already contained in any fenced block
+                is_duplicate = any(cmd in fenced_code for fenced_code in fenced_codes)
+                if not is_duplicate:
+                    code_blocks.append({
+                        'language': 'shell',
+                        'code': cmd,
+                        'type': 'inline'
+                    })
     
     return code_blocks
 

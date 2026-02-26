@@ -8,35 +8,26 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Left Navigation -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h1>AI Chat</h1>
-            </div>
-            <nav class="nav-links">
-                <a href="/" class="nav-link active">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    Chat
-                </a>
-                <a href="/config.html" class="nav-link">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                    Settings
-                </a>
-            </nav>
-        </aside>
+        <!-- Left Navigation (Shared) -->
+        <div id="leftNaviContainer" data-current-page="chat"></div>
 
         <!-- Main Chat Area -->
         <main class="main-content">
-            <div class="chat-container">
-                <!-- Model Selector -->
-                <div class="model-selector">
-                    <label for="model">Model:</label>
-                    <select id="model">
+            <!-- Frozen Header Bar -->
+            <div class="chat-header">
+                <div class="header-item">
+                    <span class="header-label">User:</span>
+                    <span class="header-value" id="headerUser">test_user</span>
+                </div>
+                <div class="header-item">
+                    <span class="header-label">Project:</span>
+                    <select id="headerProject" class="header-select">
+                        <option value="">Select Project</option>
+                    </select>
+                </div>
+                <div class="header-item">
+                    <span class="header-label">Model:</span>
+                    <select id="model" class="header-select">
                         <option value="MiniMax-M2.5">MiniMax-M2.5</option>
                         <option value="MiniMax-Text-01">MiniMax-Text-01</option>
                         <option value="gpt-4o">GPT-4o</option>
@@ -44,7 +35,9 @@
                         <option value="gpt-4-turbo">GPT-4 Turbo</option>
                     </select>
                 </div>
+            </div>
 
+            <div class="chat-container">
                 <!-- Messages -->
                 <div class="chat-messages" id="messages">
                     <div class="empty-state">
@@ -84,6 +77,7 @@
         </aside>
     </div>
 
+    <script src="/static/js/left_navi_panel.js"></script>
     <script src="/static/js/chat.js"></script>
 </body>
 </html>
