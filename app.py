@@ -276,20 +276,30 @@ class PromptRequest(BaseModel):
     prompt: str
     model: str = "MiniMax-M2.5"
     messages: List[Dict[str, str]] = []
+    project_id: Optional[str] = None
 
 @app.post("/prompt")
 async def process_prompt(request: PromptRequest):
     """Process a prompt - execute as command or pass to LLM with code execution."""
     from services.command_service import is_linux_command, execute_command
     from services.code_stripper import extract_code_blocks, strip_codes
+    from services.run_pod_test import run_code_in_pod
     
     prompt = request.prompt.strip()
+    
+    # Get project path if project_id is provided
+    project_path = None
+    if request.project_id:
+        parts = request.project_id.split("_", 1)
+        if len(parts) == 2:
+            user, name = parts
+            project_path = str(PROJECTS_DIR / user / name)
     
     # Check if it's a command
     is_cmd, command = is_linux_command(prompt)
     
     if is_cmd and command:
-        # Execute command directly
+        # Execute command directly (not in pod for direct commands)
         result = execute_command(command)
         return {
             "type": "command",
@@ -345,21 +355,41 @@ async def process_prompt(request: PromptRequest):
         code_blocks = extract_code_blocks(llm_output)
         execution_results = []
         
+        # If a project is selected, use run_pod_test; otherwise use local execution
+        use_pod = project_path is not None
+        
         for block in code_blocks:
-            exec_result = execute_command(block['code'])
-            execution_results.append({
-                "code": block['code'],
-                "language": block['language'],
-                "output": exec_result["output"],
-                "exit_code": exec_result["exit_code"],
-                "is_error": exec_result["is_error"]
-            })
+            if use_pod:
+                # Run in pod with project context
+                exec_result = run_code_in_pod(block['code'], project_path)
+                execution_results.append({
+                    "code": block['code'],
+                    "language": block['language'],
+                    "output": exec_result["output"],
+                    "exit_code": exec_result["exit_code"],
+                    "is_error": exec_result["is_error"],
+                    "access_info": exec_result.get("access_info"),
+                    "ran_in_pod": True
+                })
+            else:
+                # Run locally (no project selected)
+                exec_result = execute_command(block['code'])
+                execution_results.append({
+                    "code": block['code'],
+                    "language": block['language'],
+                    "output": exec_result["output"],
+                    "exit_code": exec_result["exit_code"],
+                    "is_error": exec_result["is_error"],
+                    "access_info": None,
+                    "ran_in_pod": False
+                })
         
         return {
             "type": "llm",
             "output": llm_output,
             "code_blocks": execution_results,
-            "has_code": len(code_blocks) > 0
+            "has_code": len(code_blocks) > 0,
+            "ran_in_pod": use_pod
         }
 
 # Static files - serve index.html at root

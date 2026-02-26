@@ -233,18 +233,29 @@ function renderMessages() {
         
         // Check for code blocks in LLM response
         if (msg.code_blocks && msg.code_blocks.length > 0) {
-            let codeBlocksHtml = msg.code_blocks.map(block => `
+            let codeBlocksHtml = msg.code_blocks.map(block => {
+                // Add pod info badge if ran in pod
+                const podBadge = block.ran_in_pod ? 
+                    '<span class="pod-badge">Pod</span>' : '';
+                
+                // Add access info if available (for web servers)
+                const accessInfo = block.access_info ? 
+                    `<div class="access-info">${escapeHtml(block.access_info)}</div>` : '';
+                
+                return `
                 <div class="command-output" style="margin-top: 12px;">
                     <div class="command-header" onclick="toggleCommandOutput(this.parentElement)">
                         <div class="command-title">
                             <span class="exit-code ${block.exit_code === 0 ? 'success' : 'error'}">${block.exit_code}</span>
                             <span>Code: ${block.language}</span>
+                            ${podBadge}
                         </div>
                         <span class="command-toggle">▼</span>
                     </div>
                     <div class="command-body">${escapeHtml(block.output)}</div>
+                    ${accessInfo}
                 </div>
-            `).join('');
+            `}).join('');
             
             return `
                 <div class="message ${msg.role}">
@@ -351,6 +362,10 @@ async function sendMessage() {
             messages_count: messages.length
         });
         
+        // Get selected project
+        const projectSelect = document.getElementById('headerProject');
+        const projectId = projectSelect ? projectSelect.value : null;
+        
         const response = await fetch('/prompt', {
             method: 'POST',
             headers: {
@@ -359,6 +374,7 @@ async function sendMessage() {
             body: JSON.stringify({
                 prompt: content,
                 model: modelSelect.value,
+                project_id: projectId,
                 messages: messages
                     .filter(m => m.type !== 'command')
                     .map(m => ({ role: m.role, content: m.content }))

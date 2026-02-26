@@ -958,3 +958,24 @@ body {
     font-size: 12px;
     color: var(--text-secondary);
 }
+
+/* Pod execution badges */
+.pod-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    background-color: #4caf50;
+    color: white;
+    margin-left: 8px;
+}
+
+.access-info {
+    padding: 12px;
+    background-color: rgba(76, 175, 80, 0.15);
+    border-top: 1px solid var(--border);
+    color: #4caf50;
+    font-size: 12px;
+    font-weight: 500;
+}
