@@ -205,6 +205,42 @@ body {
     border-color: #f44336;
 }
 
+.new-chat-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: var(--bg-tertiary);
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.new-chat-btn:hover {
+    background-color: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.create-project-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 12px;
+    margin-left: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: var(--bg-tertiary);
+    transition: all 0.2s ease;
+}
+
+.create-project-link:hover {
+    background-color: var(--accent);
+    color: white;
+}
+
 .chat-header .header-label {
     color: var(--text-secondary);
     font-size: 13px;

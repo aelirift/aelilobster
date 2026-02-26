@@ -16,15 +16,17 @@
             <!-- Frozen Header Bar -->
             <div class="chat-header">
                 <button class="clear-chat-btn" id="clearChatBtn" title="Clear Chat">🗑️ Clear</button>
+                <button class="new-chat-btn" id="newChatBtn" title="New Chat">✨ New Chat</button>
                 <div class="header-item">
                     <span class="header-label">User:</span>
                     <span class="header-value" id="headerUser">test_user</span>
                 </div>
-                <div class="header-item">
+                <div class="header-item" id="projectItem">
                     <span class="header-label">Project:</span>
                     <select id="headerProject" class="header-select">
                         <option value="">Select Project</option>
                     </select>
+                    <a href="/projects.html" id="createProjectLink" class="create-project-link" title="Create new project">+ New</a>
                 </div>
                 <div class="header-item">
                     <span class="header-label">Model:</span>

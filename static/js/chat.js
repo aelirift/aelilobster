@@ -155,12 +155,64 @@ function loadTraceState() {
 
 traceClear.addEventListener('click', clearTrace);
 
+// Function to update project selector state based on chat status
+function updateProjectSelectorState() {
+    const projectSelect = document.getElementById('headerProject');
+    const createProjectLink = document.getElementById('createProjectLink');
+    
+    if (!projectSelect) return;
+    
+    // If chat has started (has messages), disable project selector
+    if (messages.length > 0) {
+        projectSelect.disabled = true;
+        projectSelect.title = "Start a new chat to change project";
+        if (createProjectLink) {
+            createProjectLink.style.display = 'none';
+        }
+    } else {
+        projectSelect.disabled = false;
+        projectSelect.title = "Select project";
+        if (createProjectLink) {
+            createProjectLink.style.display = 'inline-block';
+        }
+    }
+}
+
+// New chat button - clears everything and resets project
+const newChatBtn = document.getElementById('newChatBtn');
+if (newChatBtn) {
+    newChatBtn.addEventListener('click', () => {
+        // Clear messages
+        messages = [];
+        localStorage.removeItem('chatMessages');
+        
+        // Clear project selection
+        localStorage.removeItem('selectedProject');
+        const projectSelect = document.getElementById('headerProject');
+        if (projectSelect) {
+            projectSelect.value = '';
+        }
+        
+        // Clear traces
+        clearTrace();
+        localStorage.removeItem('chatTraceEntries');
+        
+        // Clear URL params
+        window.history.replaceState({}, document.title, '/');
+        
+        // Re-render
+        renderMessages();
+        updateProjectSelectorState();
+    });
+}
+
 // Clear chat button
 clearChatBtn.addEventListener('click', () => {
     if (confirm('Clear all chat messages?')) {
         messages = [];
         localStorage.removeItem('chatMessages');
         renderMessages();
+        updateProjectSelectorState();
     }
 });
 
@@ -208,6 +260,9 @@ function loadState() {
     
     // Load projects and set selected project
     loadProjects();
+    
+    // Update project selector state based on existing messages
+    updateProjectSelectorState();
     
     // Check URL for project parameter
     const urlParams = new URLSearchParams(window.location.search);
@@ -359,6 +414,9 @@ function renderMessages() {
     
     // Scroll to bottom
     scrollToBottom();
+    
+    // Update project selector state
+    updateProjectSelectorState();
 }
 
 // Scroll to bottom of messages - always scroll to latest
