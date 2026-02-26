@@ -5,10 +5,42 @@ const sendButton = document.getElementById('sendButton');
 const modelSelect = document.getElementById('model');
 const traceContent = document.getElementById('traceContent');
 const traceClear = document.getElementById('traceClear');
+const traceStop = document.getElementById('traceStop');
+const clearChatBtn = document.getElementById('clearChatBtn');
+
+// Build tree response for display
+function buildTreeResponse(tree, indent = 0) {
+    let result = '';
+    const prefix = '  '.repeat(indent);
+    const icon = indent === 0 ? '📌' : '  ';
+    
+    tree.forEach((node, i) => {
+        const nodeIcon = node.success ? '✅' : '❌';
+        result += `${prefix}${icon} Command ${i+1}:\n`;
+        result += `${prefix}   Code: ${node.code || 'N/A'}\n`;
+        result += `${prefix}   ${nodeIcon} ${node.success ? 'Success' : 'Failed'}\n`;
+        
+        if (node.result) {
+            const resultLines = node.result.split('\n').slice(0, 5).join('\n');
+            result += `${prefix}   Output:\n${prefix}   ${resultLines}\n`;
+            if (node.result.split('\n').length > 5) {
+                result += `${prefix}   ... (${node.result.split('\n').length} lines total)\n`;
+            }
+        }
+        
+        // Add children
+        if (node.children && node.children.length > 0) {
+            result += buildTreeResponse(node.children, indent + 1);
+        }
+    });
+    
+    return result;
+}
 
 // State
 let messages = [];
 let isLoading = false;
+let isLooping = false;
 let traceId = 0;
 let traceEntries = []; // Store trace entries for session persistence
 
@@ -45,14 +77,27 @@ function renderTraceEntry(entry, isInitial) {
         dataHtml = `<div class="trace-data">${escapeHtml(String(entry.data))}</div>`;
     }
     
+    // Create copy button handler
+    const copyContent = typeof entry.data === 'object' ? JSON.stringify(entry.data, null, 2) : String(entry.data);
+    
     domEntry.innerHTML = `
         <div class="trace-time">${entry.time}</div>
         <div class="trace-step">
             <div class="trace-icon ${entry.type}">${entry.type === 'input' ? '↓' : entry.type === 'process' ? '⚙' : entry.type === 'output' ? '↑' : '!'}</div>
             <div class="trace-text">${escapeHtml(entry.label)}</div>
+            <button class="trace-copy" title="Copy to clipboard">📋</button>
         </div>
         ${dataHtml}
     `;
+    
+    // Add copy functionality
+    const copyBtn = domEntry.querySelector('.trace-copy');
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(copyContent).then(() => {
+            copyBtn.textContent = '✓';
+            setTimeout(() => { copyBtn.textContent = '📋'; }, 1000);
+        });
+    });
     
     // Remove empty state if present
     const emptyState = traceContent.querySelector('.empty-state');
@@ -111,6 +156,40 @@ function loadTraceState() {
 }
 
 traceClear.addEventListener('click', clearTrace);
+
+// Clear chat button
+clearChatBtn.addEventListener('click', () => {
+    if (confirm('Clear all chat messages?')) {
+        messages = [];
+        localStorage.removeItem('chatMessages');
+        renderMessages();
+    }
+});
+
+// Toggle stop button visibility
+function setLoopingState(looping) {
+    isLooping = looping;
+    traceStop.style.display = looping ? 'inline-block' : 'none';
+    sendButton.disabled = looping;
+    messageInput.disabled = looping;
+}
+
+// Stop button handler
+traceStop.addEventListener('click', async () => {
+    if (!isLooping) return;
+    
+    try {
+        await fetch('/api/looper/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+    } catch (e) {
+        console.error('Failed to stop looper:', e);
+    }
+    
+    setLoopingState(false);
+    addTrace('input', 'Looper Stopped', 'User requested to stop the execution');
+});
 
 // Load saved state from localStorage
 function loadState() {
@@ -328,6 +407,7 @@ async function sendMessage() {
     isLoading = true;
     sendButton.disabled = true;
     messageInput.disabled = true;
+    setLoopingState(true);
     
     // Add loading message
     const loadingId = 'loading-' + Date.now();
@@ -341,7 +421,7 @@ async function sendMessage() {
                         <span></span>
                         <span></span>
                     </div>
-                    <span>Processing...</span>
+                    <span>Processing with Looper...</span>
                 </div>
             </div>
         </div>
@@ -355,8 +435,8 @@ async function sendMessage() {
             model: modelSelect.value
         });
         
-        // Use the unified /prompt endpoint
-        addTrace('process', 'Calling /prompt endpoint', {
+        // Use the looper endpoint
+        addTrace('process', 'Starting Looper', {
             prompt: content,
             model: modelSelect.value,
             messages_count: messages.length
@@ -366,7 +446,7 @@ async function sendMessage() {
         const projectSelect = document.getElementById('headerProject');
         const projectId = projectSelect ? projectSelect.value : null;
         
-        const response = await fetch('/prompt', {
+        const response = await fetch('/api/looper/run', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -388,70 +468,75 @@ async function sendMessage() {
         
         const data = await response.json();
         
-        // TRACE: Response received
-        addTrace('output', 'Response from /prompt', {
-            type: data.type,
-            has_code: data.has_code || false,
-            code_blocks_count: data.code_blocks ? data.code_blocks.length : 0,
-            output_length: data.output ? data.output.length : 0
-        });
+        // Set looping to false since looper finished
+        setLoopingState(false);
         
         // Remove loading message
         const loadingEl = document.getElementById(loadingId);
         if (loadingEl) loadingEl.remove();
         
-        if (data.type === 'command') {
-            // Command result
-            addTrace('output', 'Command Executed', {
-                command: content,
-                exit_code: data.exit_code,
-                output: data.output
+        // Handle looper response
+        if (data.success) {
+            // Looper completed successfully
+            addTrace('output', 'Looper Complete', {
+                loop_count: data.loop_count || 1,
+                success: true,
+                results_count: data.successful_results ? data.successful_results.length : 0
             });
             
-            messages.push({ 
-                role: 'assistant', 
-                content: data.output, 
-                type: 'command',
-                command: content,
-                exit_code: data.exit_code,
-                is_error: data.is_error
-            });
-        } else if (data.type === 'llm') {
-            // LLM result
-            messages.push({ 
-                role: 'assistant', 
-                content: data.output, 
-                type: 'llm',
-                code_blocks: data.code_blocks || []
-            });
-            
-            // Trace code execution if present
-            if (data.code_blocks && data.code_blocks.length > 0) {
-                addTrace('process', 'Code Stripper: Extracted code blocks', {
-                    blocks: data.code_blocks.map(b => ({
-                        language: b.language,
-                        code: b.code.substring(0, 50) + '...'
-                    }))
-                });
-                
-                data.code_blocks.forEach((block, i) => {
-                    addTrace('output', `Code Block ${i + 1} Executed`, {
-                        code: block.code,
-                        exit_code: block.exit_code,
-                        output: block.output
-                    });
-                });
+            // Build detailed response from command tree
+            let responseText = '';
+            if (data.command_tree && data.command_tree.length > 0) {
+                responseText = buildTreeResponse(data.command_tree);
+            } else {
+                responseText = data.response || (data.successful_results ? data.successful_results.join('\n') : 'Completed');
             }
+            
+            messages.push({
+                role: 'assistant',
+                content: responseText,
+                type: 'looper-success',
+                loop_count: data.loop_count
+            });
         } else {
-            // Error
-            addTrace('error', 'Error Response', data);
-            messages.push({ role: 'assistant', content: data.output || 'Error', type: 'error' });
+            // Looper failed
+            addTrace('error', 'Looper Failed', {
+                error: data.error,
+                loop_count: data.loop_count || 1,
+                stopped: data.stopped || false
+            });
+            
+            // Try to show partial results
+            let errorContent = data.error || 'Execution failed';
+            if (data.command_tree && data.command_tree.length > 0) {
+                errorContent = buildTreeResponse(data.command_tree) + '\n\n❌ Error: ' + errorContent;
+            }
+            
+            messages.push({
+                role: 'assistant',
+                content: errorContent,
+                type: 'error'
+            });
+        }
+        
+        // Add detailed trace for each command
+        if (data.command_tree) {
+            data.command_tree.forEach((node, i) => {
+                addTrace('output', `Command ${i+1}: ${node.code ? node.code.substring(0, 30) + '...' : 'N/A'}`, {
+                    success: node.success,
+                    result: node.result || node.error,
+                    level: node.level
+                });
+            });
         }
         
         renderMessages();
         saveState();
         
     } catch (error) {
+        // Reset looping state
+        setLoopingState(false);
+        
         // Remove loading message
         const loadingEl = document.getElementById(loadingId);
         if (loadingEl) loadingEl.remove();
@@ -470,6 +555,7 @@ async function sendMessage() {
     isLoading = false;
     sendButton.disabled = false;
     messageInput.disabled = false;
+    setLoopingState(false);
     messageInput.focus();
 }
 
@@ -510,6 +596,9 @@ messagesContainer.addEventListener('scroll', () => {
 
 // Load state on page load
 loadState();
+
+// Load trace entries from localStorage on page load
+loadTraceState();
 
 // Focus input on load
 messageInput.focus();

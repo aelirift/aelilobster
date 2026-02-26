@@ -392,6 +392,82 @@ async def process_prompt(request: PromptRequest):
             "ran_in_pod": use_pod
         }
 
+
+# Looper endpoints
+class LooperRequest(BaseModel):
+    prompt: str
+    model: str = "MiniMax-M2.5"
+    messages: List[Dict[str, str]] = []
+    project_id: Optional[str] = None
+
+
+def get_llm_call_function(model: str, api_key: str):
+    """Get the appropriate LLM call function based on model."""
+    config = get_provider_and_headers(model, api_key)
+    
+    if config["provider"] == "minimax_anthropic":
+        return lambda m, msgs, temp, tokens, ak: call_minimax_anthropic(m, msgs, temp, tokens, ak)
+    else:
+        return lambda m, msgs, temp, tokens, ak: call_openai_compatible(m, msgs, temp, tokens, config["endpoint"], ak)
+
+
+@app.post("/api/looper/run")
+async def run_looper(request: LooperRequest):
+    """Run the looper - a loop that handles: call API -> code stripper -> run pod test -> results -> debugger"""
+    from services.looper import run_looper as run_looper_service, set_trace_callback, get_looper_state
+    from services.run_pod_test import find_requirements_file
+    
+    prompt = request.prompt.strip()
+    
+    # Get project path if project_id is provided
+    project_path = None
+    if request.project_id:
+        parts = request.project_id.split("_", 1)
+        if len(parts) == 2:
+            user, name = parts
+            project_path = str(PROJECTS_DIR / user / name)
+    
+    # Get API key
+    if "minimax" in request.model.lower():
+        api_key = get_api_key("minimax")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="MiniMax API key not configured")
+    else:
+        api_key = get_api_key("openai")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="OpenAI API key not configured")
+    
+    # Get LLM call function
+    call_llm_func = get_llm_call_function(request.model, api_key)
+    
+    # Load context files (debugger context)
+    context_files = load_context_files()
+    
+    # Run the looper
+    result = await run_looper_service(
+        initial_prompt=prompt,
+        model=request.model,
+        api_key=api_key,
+        project_path=project_path,
+        call_llm_func=call_llm_func,
+        context_files=context_files,
+        trace_callback=None
+    )
+    
+    return result
+
+
+@app.post("/api/looper/stop")
+async def stop_looper():
+    """Stop the running looper."""
+    from services.looper import stop_looper as stop_looper_service, get_looper_state
+    
+    state = get_looper_state()
+    state.stop()
+    
+    return {"status": "stopped", "was_running": state.is_running}
+
+
 # Static files - serve index.html at root
 @app.get("/")
 async def serve_index():

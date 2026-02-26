@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="app-container">
+    <div class="app-container chat-mode">
         <!-- Left Navigation (Shared) -->
         <div id="leftNaviContainer" data-current-page="chat"></div>
 
@@ -15,6 +15,7 @@
         <main class="main-content">
             <!-- Frozen Header Bar -->
             <div class="chat-header">
+                <button class="clear-chat-btn" id="clearChatBtn" title="Clear Chat">🗑️ Clear</button>
                 <div class="header-item">
                     <span class="header-label">User:</span>
                     <span class="header-value" id="headerUser">test_user</span>
@@ -67,7 +68,10 @@
         <aside class="trace-panel">
             <div class="trace-header">
                 <h3>Trace Log</h3>
-                <button class="trace-clear" id="traceClear">Clear</button>
+                <div class="trace-header-buttons">
+                    <button class="trace-stop" id="traceStop" style="display: none;">Stop Immediate</button>
+                    <button class="trace-clear" id="traceClear">Clear</button>
+                </div>
             </div>
             <div class="trace-content" id="traceContent">
                 <div class="empty-state" style="padding: 20px;">
