@@ -448,8 +448,32 @@ async def run_looper(request: LooperRequest):
     """Run the looper - a loop that handles: call API -> code stripper -> run pod test -> results -> debugger"""
     from services.looper import run_looper as run_looper_service, set_trace_callback, get_looper_state
     from services.run_pod_test import find_requirements_file
+    from services.command_service import is_linux_command, execute_command
     
     prompt = request.prompt.strip()
+    
+    # Check if it's a Linux command - execute directly if so
+    is_cmd, command = is_linux_command(prompt)
+    
+    if is_cmd and command:
+        # Execute command directly and return result
+        result = execute_command(command)
+        return {
+            "success": True,
+            "type": "command",
+            "response": result["output"],
+            "output": result["output"],
+            "exit_code": result["exit_code"],
+            "is_error": result["is_error"],
+            "command_tree": []
+        }
+    elif is_cmd and command is None:
+        # Blocked command
+        return {
+            "success": False,
+            "type": "error",
+            "output": "Command blocked for safety reasons"
+        }
     
     # Get project path if project_id is provided
     project_path = None
@@ -471,6 +495,10 @@ async def run_looper(request: LooperRequest):
     if not user_name:
         config = load_config()
         user_name = config.get("default_user", "default")
+    
+    # Use default project if not provided
+    if not project_name:
+        project_name = "default"
     
     # Get API key
     if "minimax" in request.model.lower():
@@ -783,15 +811,18 @@ async def run_pod_test(request: RunPodRequest):
     """Run code in an isolated pod."""
     from services.run_pod_test import run_code_in_pod
     
-    # Get project path
+    # Get project path and extract user_name and project_name
+    # Format: user_name-project_name (e.g., test_user-default)
     project_path = None
+    user_name = None
+    project_name = None
     if request.project_id:
-        parts = request.project_id.split("_", 1)
+        parts = request.project_id.split("-", 1)
         if len(parts) == 2:
-            user, name = parts
-            project_path = str(PROJECTS_DIR / user / name)
+            user_name, project_name = parts
+            project_path = str(PROJECTS_DIR / user_name / project_name)
     
-    result = run_code_in_pod(request.code, project_path)
+    result = run_code_in_pod(request.code, project_path, user_name, project_name)
     return result
 
 

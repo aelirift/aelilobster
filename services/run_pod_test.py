@@ -281,11 +281,35 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
     else:
         container_name = f"test-pod-{uuid.uuid4().hex[:8]}"
     
+    # Check if pod is already running with this name
+    check_running = subprocess.run(
+        ['podman', 'ps', '--filter', f'name={container_name}', '--format', '{{.Names}}'],
+        capture_output=True,
+        text=True
+    )
+    pod_already_running = container_name in check_running.stdout
+    
+    # Check if pod exists (but not running)
+    check_exists = subprocess.run(
+        ['podman', 'ps', '-a', '--filter', f'name={container_name}', '--format', '{{.Names}}'],
+        capture_output=True,
+        text=True
+    )
+    pod_exists = container_name in check_exists.stdout
+    
     # Determine the working directory
     if project_path:
         work_dir = project_path
     else:
         work_dir = settings.get("work_dir", "/tmp")
+    
+    # Decide whether to keep pod running
+    keep_running = settings.get("keep_running", True)
+    auto_destroy = settings.get("auto_destroy", False)
+    
+    # DEBUG: Log the settings
+    print(f"[DEBUG] keep_running={keep_running}, auto_destroy={auto_destroy}")
+    print(f"[DEBUG] pod_already_running={pod_already_running}, pod_exists={pod_exists}")
     
     # Find and install requirements if project_path is provided
     requirements_installed = False
@@ -320,27 +344,98 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
             cmd = f"python -c {repr(code)}"
             image = settings.get("python_image", "python:3-alpine")
         
-        # Build podman run command based on settings
-        podman_cmd = ['podman', 'run']
-        
-        # Add --rm only if auto_destroy is true
-        if settings.get("auto_destroy", False):
-            podman_cmd.append('--rm')
-        
-        podman_cmd.extend([
-            '--name', container_name,
-            '-v', f'{work_dir}:{work_dir}:Z',
-            '-w', work_dir,
-            '-p', f"{settings.get('default_port', 8080)}:8080",
-            image, 'sh', '-c', cmd
-        ])
-        
-        result = subprocess.run(
-            podman_cmd,
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        # Check if we can reuse existing pod or need to create new one
+        if pod_already_running:
+            # Pod is already running - exec into it
+            print(f"[POD] Reusing existing pod: {container_name}")
+            podman_cmd = ['podman', 'exec', '-w', work_dir, container_name, 'sh', '-c', cmd]
+            result = subprocess.run(
+                podman_cmd,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+        elif pod_exists:
+            # Pod exists but not running - start it first
+            print(f"[POD] Starting existing pod: {container_name}")
+            subprocess.run(['podman', 'start', container_name], capture_output=True)
+            # Wait a bit for pod to start
+            import time
+            time.sleep(1)
+            # Now exec into it
+            podman_cmd = ['podman', 'exec', '-w', work_dir, container_name, 'sh', '-c', cmd]
+            result = subprocess.run(
+                podman_cmd,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+        else:
+            # Pod doesn't exist - create new one
+            print(f"[POD] Creating new pod: {container_name}, keep_running={keep_running}")
+            
+            if keep_running:
+                # When keep_running=True, start container in detached mode with keepalive
+                # Then exec the command into the running container
+                podman_cmd = ['podman', 'run', '-d']
+                
+                # Don't use --rm when keeping running
+                # if auto_destroy or not keep_running:
+                #     podman_cmd.append('--rm')
+                
+                podman_cmd.extend([
+                    '--name', container_name,
+                    '-v', f'{work_dir}:{work_dir}:Z',
+                    '-w', work_dir,
+                    '-p', f"{settings.get('default_port', 8080)}:8080",
+                    image, 'tail', '-f', '/dev/null'
+                ])
+                
+                print(f"[POD] Running: {' '.join(podman_cmd)}")
+                
+                # Start container in detached mode (running in background)
+                run_result = subprocess.run(
+                    podman_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                print(f"[POD] Run result: returncode={run_result.returncode}, stdout={run_result.stdout}, stderr={run_result.stderr}")
+                
+                # Wait for container to start
+                import time
+                time.sleep(2)
+                
+                # Now exec the command into the running container
+                exec_cmd = ['podman', 'exec', '-w', work_dir, container_name, 'sh', '-c', cmd]
+                result = subprocess.run(
+                    exec_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+            else:
+                # When not keeping running, use the original behavior
+                podman_cmd = ['podman', 'run']
+                
+                # Add --rm only if auto_destroy is true OR keep_running is false
+                if auto_destroy or not keep_running:
+                    podman_cmd.append('--rm')
+                
+                podman_cmd.extend([
+                    '--name', container_name,
+                    '-v', f'{work_dir}:{work_dir}:Z',
+                    '-w', work_dir,
+                    '-p', f"{settings.get('default_port', 8080)}:8080",
+                    image, 'sh', '-c', cmd
+                ])
+                
+                result = subprocess.run(
+                    podman_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
         
         full_output = result.stdout + result.stderr
         
@@ -357,7 +452,8 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
             "access_info": access_info,
             "requirements_installed": requirements_installed,
             "container_name": container_name,
-            "keep_running": settings.get("keep_running", True)
+            "keep_running": keep_running,
+            "pod_reused": pod_already_running or pod_exists
         }
         
     except subprocess.TimeoutExpired:
