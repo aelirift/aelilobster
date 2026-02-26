@@ -107,10 +107,8 @@ function renderTraceEntry(entry, isInitial) {
     
     traceContent.appendChild(domEntry);
     
-    // Only scroll to bottom for new entries, not during initial load
-    if (!isInitial) {
-        traceContent.scrollTop = traceContent.scrollHeight;
-    }
+    // Always scroll to bottom for new trace entries
+    traceContent.scrollTop = traceContent.scrollHeight;
 }
 
 function clearTrace() {
@@ -363,22 +361,13 @@ function renderMessages() {
     scrollToBottom();
 }
 
-// Scroll to bottom of messages (only if user is near bottom or hasn't scrolled up)
-function scrollToBottom(force = false) {
+// Scroll to bottom of messages - always scroll to latest
+function scrollToBottom(force = true) {
     setTimeout(() => {
         requestAnimationFrame(() => {
             const container = messagesContainer;
-            // If force is true, always scroll
-            // If user hasn't scrolled up manually, check if near bottom
-            // This allows users to scroll up to see history without being forced to bottom
-            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-            if (force || !userHasScrolledUp || isNearBottom) {
-                container.scrollTop = container.scrollHeight;
-                // Reset userHasScrolledUp after scrolling to bottom
-                if (isNearBottom) {
-                    userHasScrolledUp = false;
-                }
-            }
+            // Always scroll to bottom for new messages
+            container.scrollTop = container.scrollHeight;
         });
     }, 50);
 }
