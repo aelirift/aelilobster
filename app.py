@@ -23,6 +23,37 @@ app.add_middleware(
 # Configuration file path
 CONFIG_FILE = Path(__file__).parent / "config.json"
 
+# Projects directory
+PROJECTS_DIR = Path(__file__).parent / "user_login"
+
+
+def parse_project_id(project_id: str) -> tuple:
+    """
+    Parse project_id into (user_name, project_name).
+    
+    Supports formats:
+    - user-project (hyphen): "test_user-myproject" -> ("test_user", "myproject")
+    - user_project (underscore): "test_user_myproject" -> ("test_user", "myproject")
+    
+    Returns (None, None) if invalid format.
+    """
+    if not project_id:
+        return None, None
+    
+    # Try hyphen first (preferred format per naming_conventions.md)
+    if "-" in project_id:
+        parts = project_id.split("-", 1)
+        if len(parts) == 2:
+            return parts[0], parts[1]
+    
+    # Try underscore (legacy format)
+    if "_" in project_id:
+        parts = project_id.split("_", 1)
+        if len(parts) == 2:
+            return parts[0], parts[1]
+    
+    return None, None
+
 # Load config from file
 def load_config() -> Dict[str, Any]:
     if CONFIG_FILE.exists():
@@ -319,11 +350,9 @@ async def process_prompt(request: PromptRequest):
     
     # Get project path if project_id is provided
     project_path = None
-    if request.project_id:
-        parts = request.project_id.split("_", 1)
-        if len(parts) == 2:
-            user, name = parts
-            project_path = str(PROJECTS_DIR / user / name)
+    user_name, project_name = parse_project_id(request.project_id) if request.project_id else (None, None)
+    if user_name and project_name:
+        project_path = str(PROJECTS_DIR / user_name / project_name)
     
     # Check if it's a command
     is_cmd, command = is_linux_command(prompt)
@@ -481,15 +510,14 @@ async def run_looper(request: LooperRequest):
     project_name = request.project_name
     
     if request.project_id:
-        parts = request.project_id.split("_", 1)
-        if len(parts) == 2:
-            user, name = parts
-            project_path = str(PROJECTS_DIR / user / name)
+        parsed_user, parsed_project = parse_project_id(request.project_id)
+        if parsed_user and parsed_project:
+            project_path = str(PROJECTS_DIR / parsed_user / parsed_project)
             # Use project_id parts as user_name and project_name if not provided
             if not user_name:
-                user_name = user
+                user_name = parsed_user
             if not project_name:
-                project_name = name
+                project_name = parsed_project
     
     # Use default user from config if not provided
     if not user_name:
@@ -563,7 +591,7 @@ async def trace_stream():
                 # Send new entries
                 new_entries = current_entries[last_index:]
                 for entry in new_entries:
-                    yield f"data: {json.dumps(entry)}\n\n"
+                    yield f"data: {json.dumps(entry.to_dict())}\n\n"
                     last_index += 1
             
             # Small delay to avoid tight loop
@@ -630,14 +658,21 @@ def load_context_files() -> List[Dict[str, Any]]:
         try:
             with open(md_file, "r") as f:
                 content = f.read()
-            # Parse metadata from filename: {id}_{type}_{name}.md
+            # Parse metadata from filename: {id}_{type}_{name}.md or {type}_{name}.md
             stem = md_file.stem
             parts = stem.split("_", 2)
             if len(parts) >= 3:
+                # Format: {id}_{type}_{name}.md
                 file_id = parts[0]
                 file_type = parts[1]
                 name = parts[2]
+            elif len(parts) == 2:
+                # Format: {type}_{name}.md (no numeric ID)
+                file_id = parts[0]
+                file_type = parts[0]
+                name = parts[1]
             else:
+                # Single word filename
                 file_id = stem
                 file_type = "pre-llm"
                 name = stem
@@ -717,7 +752,6 @@ async def delete_context_file_endpoint(file_id: str):
     return {"status": "deleted"}
 
 # Projects API
-PROJECTS_DIR = Path(__file__).parent / "user_login"
 
 class ProjectRequest(BaseModel):
     name: str
@@ -791,12 +825,11 @@ async def create_project(request: ProjectRequest):
 @app.delete("/api/projects/{project_id}")
 async def delete_project(project_id: str):
     """Delete a project."""
-    # Parse user and name from project_id (format: user_name)
-    parts = project_id.split("_", 1)
-    if len(parts) != 2:
+    # Parse user and name from project (_id using helpersupports hyphen and underscore)
+    user, name = parse_project_id(project_id)
+    if not user or not name:
         raise HTTPException(status_code=400, detail="Invalid project ID")
     
-    user, name = parts
     if delete_project_folder(user, name):
         return {"status": "deleted"}
     raise HTTPException(status_code=404, detail="Project not found")
@@ -811,15 +844,14 @@ async def run_pod_test(request: RunPodRequest):
     """Run code in an isolated pod."""
     from services.run_pod_test import run_code_in_pod
     
-    # Get project path and extract user_name and project_name
-    # Format: user_name-project_name (e.g., test_user-default)
+    # Get project path and extract user_name and project_name using helper
+    # Supports both hyphen (test-project) and underscore (test_project) formats
     project_path = None
     user_name = None
     project_name = None
     if request.project_id:
-        parts = request.project_id.split("-", 1)
-        if len(parts) == 2:
-            user_name, project_name = parts
+        user_name, project_name = parse_project_id(request.project_id)
+        if user_name and project_name:
             project_path = str(PROJECTS_DIR / user_name / project_name)
     
     result = run_code_in_pod(request.code, project_path, user_name, project_name)

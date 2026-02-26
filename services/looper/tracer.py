@@ -18,6 +18,31 @@ class TraceEntry:
     label: str
     data: Any
     time: str = field(default_factory=lambda: datetime.now().strftime("%H:%M:%S"))
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "type": self.type,
+            "label": self.label,
+            "data": self._serialize_data(self.data),
+            "time": self.time
+        }
+    
+    @staticmethod
+    def _serialize_data(data: Any) -> Any:
+        """Recursively serialize data for JSON."""
+        if data is None:
+            return None
+        if isinstance(data, (str, int, float, bool)):
+            return data
+        if isinstance(data, list):
+            return [TraceEntry._serialize_data(item) for item in data]
+        if isinstance(data, dict):
+            return {str(k): TraceEntry._serialize_data(v) for k, v in data.items()}
+        if hasattr(data, 'to_dict'):
+            return data.to_dict()
+        # For objects without to_dict, convert to string
+        return str(data)
 
 
 class TraceLogger:
@@ -37,7 +62,7 @@ class TraceLogger:
     
     def get_all(self) -> List[Dict[str, Any]]:
         """Get all entries as dicts."""
-        return [entry.__dict__ for entry in self.entries]
+        return [entry.to_dict() for entry in self.entries]
     
     def __len__(self) -> int:
         return len(self.entries)
