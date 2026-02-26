@@ -57,6 +57,7 @@ function renderFiles(files) {
         <div class="file-item-mini ${editingFileId === file.id ? 'active' : ''}" onclick="selectFile('${file.id}')">
             <span>${escapeHtml(file.name)}</span>
             <span class="file-type-badge">${escapeHtml(file.type)}</span>
+            ${file.is_default ? '<span class="default-badge">Default</span>' : ''}
         </div>
     `).join('');
 }
@@ -146,6 +147,25 @@ function newFile() {
     renderFiles(allFiles);
 }
 
+// Set file as default for its type
+async function setAsDefault() {
+    if (!editingFileId) {
+        showStatus('Select a file first', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/context-files/${editingFileId}/set-default`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error('Failed to set default');
+        showStatus('Set as default for ' + (await response.json()).type, 'success');
+        loadFiles();
+    } catch (error) {
+        showStatus('Error: ' + error.message, 'error');
+    }
+}
+
 function showStatus(message, type) {
     statusMessage.textContent = message;
     statusMessage.className = 'config-status ' + type;
@@ -162,6 +182,7 @@ function escapeHtml(text) {
 // Events
 saveFileBtn.addEventListener('click', saveFile);
 deleteFileBtn.addEventListener('click', deleteFile);
+document.getElementById('setDefaultBtn').addEventListener('click', setAsDefault);
 
 // Init
 loadFileTypes();

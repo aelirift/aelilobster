@@ -4,9 +4,17 @@ const createProjectBtn = document.getElementById('createProjectBtn');
 const createStatus = document.getElementById('createStatus');
 const projectsList = document.getElementById('projectsList');
 const statusMessage = document.getElementById('statusMessage');
+const projectSettingsPanel = document.getElementById('projectSettingsPanel');
+const noProjectSelected = document.getElementById('noProjectSelected');
+const contextSettingsContainer = document.getElementById('contextSettingsContainer');
+const settingsProjectName = document.getElementById('settingsProjectName');
+const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 
 const CURRENT_USER = 'test_user';
 let editingProjectId = null;
+let currentProjectSettings = {};
+let allContextFiles = [];
+let allFileTypes = [];
 
 // Load projects from server on page load
 async function loadProjects() {
@@ -47,11 +55,14 @@ function renderProjects(projects) {
                     <button class="project-action-btn use-btn" onclick="openProject('${project.id}')" title="Open project">
                         Open
                     </button>
+                    <button class="project-action-btn settings-btn" onclick="showProjectSettings('${project.id}', '${escapeHtml(project.name)}')" title="Settings">
+                        ⚙️
+                    </button>
                     <button class="project-action-btn run-btn" onclick="runInPod('${project.id}')" title="Run in Pod">
-                        Run in Pod
+                        Run
                     </button>
                     <button class="project-action-btn delete-btn" onclick="deleteProject('${project.id}')" title="Delete">
-                        Delete
+                        🗑️
                     </button>
                 </div>
             </div>
@@ -172,11 +183,104 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Load context files and types
+async function loadContextData() {
+    try {
+        const [filesRes, typesRes] = await Promise.all([
+            fetch('/api/context-files'),
+            fetch('/api/file-types')
+        ]);
+        allContextFiles = await filesRes.json();
+        allFileTypes = await typesRes.json();
+    } catch (error) {
+        console.error('Failed to load context data:', error);
+    }
+}
+
+// Show project settings panel
+async function showProjectSettings(projectId, projectName) {
+    editingProjectId = projectId;
+    settingsProjectName.value = projectName;
+    projectSettingsPanel.style.display = 'block';
+    noProjectSelected.style.display = 'none';
+    
+    // Load project context settings or defaults
+    try {
+        const response = await fetch(`/api/projects/${projectId}/context-settings`);
+        currentProjectSettings = await response.json();
+    } catch (error) {
+        currentProjectSettings = {};
+    }
+    
+    renderContextSettings();
+}
+
+// Render context file dropdowns
+function renderContextSettings() {
+    // Filter out non-context types (like 'pod')
+    const contextTypes = allFileTypes.filter(t => t !== 'pod');
+    
+    contextSettingsContainer.innerHTML = contextTypes.map(type => {
+        const filesOfType = allContextFiles.filter(f => f.type === type);
+        const currentValue = currentProjectSettings[type] || '';
+        
+        // Get default for this type
+        const defaultFile = filesOfType.find(f => f.is_default);
+        const defaultName = defaultFile ? defaultFile.name : '';
+        
+        return `
+            <div class="form-group">
+                <label>${type} ${defaultName ? `(default: ${defaultName})` : ''}</label>
+                <select id="context_${type}" data-type="${type}">
+                    <option value="">-- Default (${defaultName || 'none'}) --</option>
+                    ${filesOfType.map(f => `
+                        <option value="${f.name}" ${f.name === currentValue ? 'selected' : ''}>
+                            ${escapeHtml(f.name)} ${f.is_default ? '(Default)' : ''}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+        `;
+    }).join('');
+}
+
+// Save project context settings
+async function saveProjectSettings() {
+    if (!editingProjectId) return;
+    
+    // Gather settings from dropdowns
+    const contextTypes = allFileTypes.filter(t => t !== 'pod');
+    const settings = {};
+    
+    contextTypes.forEach(type => {
+        const select = document.getElementById(`context_${type}`);
+        if (select && select.value) {
+            settings[type] = select.value;
+        }
+    });
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/context-settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        
+        if (!response.ok) throw new Error('Failed to save settings');
+        
+        showStatus('Settings saved successfully', 'success');
+    } catch (error) {
+        showStatus('Failed to save settings: ' + error.message, 'error');
+    }
+}
+
 // Event listeners
 createProjectBtn.addEventListener('click', createProject);
 projectNameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') createProject();
 });
+saveSettingsBtn.addEventListener('click', saveProjectSettings);
 
 // Initialize
 loadProjects();
+loadContextData();

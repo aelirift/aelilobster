@@ -2,5 +2,6 @@
   "openai_api_key": "sk-api-FQ2WvphPiXLWmpf69xxgyoAJx265_35VjWLthk3LjZ0Hd7V1LDqptD6esYfFs9QNEMF2_dhFAq3KpfabX7hQcdiPidNwFmyTqmVuo_GOpF1WX-rYW2A77AM",
   "default_model": "MiniMax-M2.5",
   "minimax_api_key": "sk-api-FQ2WvphPiXLWmpf69xxgyoAJx265_35VjWLthk3LjZ0Hd7V1LDqptD6esYfFs9QNEMF2_dhFAq3KpfabX7hQcdiPidNwFmyTqmVuo_GOpF1WX-rYW2A77AM",
-  "default_user": "test_user"
+  "default_user": "test_user",
+  "project_context_settings": {}
 }

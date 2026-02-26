@@ -651,40 +651,72 @@ def get_file_types() -> List[str]:
 
 def load_context_files() -> List[Dict[str, Any]]:
     """Load context files metadata from folder."""
+    # Load defaults
+    defaults = load_context_defaults()
+    
     files = []
     for md_file in CONTEXT_FILES_DIR.glob("*.md"):
-        if md_file.name == "file_types.json":
+        if md_file.name in ("file_types.json", "defaults.json"):
             continue
         try:
             with open(md_file, "r") as f:
                 content = f.read()
-            # Parse metadata from filename: {id}_{type}_{name}.md or {type}_{name}.md
+            # Parse metadata from filename: {name}_{type}.md
             stem = md_file.stem
-            parts = stem.split("_", 2)
-            if len(parts) >= 3:
-                # Format: {id}_{type}_{name}.md
-                file_id = parts[0]
+            parts = stem.rsplit("_", 1)  # Split from right to get type
+            if len(parts) == 2:
+                name = parts[0]
                 file_type = parts[1]
-                name = parts[2]
-            elif len(parts) == 2:
-                # Format: {type}_{name}.md (no numeric ID)
-                file_id = parts[0]
-                file_type = parts[0]
-                name = parts[1]
             else:
-                # Single word filename
-                file_id = stem
-                file_type = "pre-llm"
+                # Single word filename - default to pre-llm type
                 name = stem
+                file_type = "pre-llm"
+            
+            # Check if this file is the default for its type
+            is_default = defaults.get(file_type) == name
+            
             files.append({
-                "id": file_id,
+                "id": f"{name}_{file_type}",
                 "name": name,
                 "type": file_type,
-                "content": content
+                "content": content,
+                "is_default": is_default
             })
         except:
             pass
     return files
+
+def load_context_defaults() -> Dict[str, str]:
+    """Load default context file mappings from defaults.json."""
+    defaults_file = CONTEXT_FILES_DIR / "defaults.json"
+    if defaults_file.exists():
+        try:
+            import json
+            with open(defaults_file, "r") as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def save_context_defaults(defaults: Dict[str, str]) -> None:
+    """Save default context file mappings to defaults.json."""
+    defaults_file = CONTEXT_FILES_DIR / "defaults.json"
+    import json
+    with open(defaults_file, "w") as f:
+        json.dump(defaults, f, indent=2)
+
+def load_project_context_settings(project_id: str) -> Dict[str, str]:
+    """Load context file settings for a specific project."""
+    config = load_config()
+    return config.get("project_context_settings", {}).get(project_id, {})
+
+def save_project_context_settings(project_id: str, settings: Dict[str, str]) -> None:
+    """Save context file settings for a specific project."""
+    config = load_config()
+    if "project_context_settings" not in config:
+        config["project_context_settings"] = {}
+    config["project_context_settings"][project_id] = settings
+    save_config(config)
 
 def save_context_file(file_id: str, file_type: str, name: str, content: str) -> None:
     """Save a context file to disk as .md file."""
@@ -692,15 +724,17 @@ def save_context_file(file_id: str, file_type: str, name: str, content: str) -> 
     safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip()
     if not safe_name:
         safe_name = "untitled"
-    filename = f"{file_id}_{file_type}_{safe_name}.md"
+    # New format: {name}_{type}.md
+    filename = f"{safe_name}_{file_type}.md"
     filepath = CONTEXT_FILES_DIR / filename
     with open(filepath, "w") as f:
         f.write(content)
 
 def delete_context_file(file_id: str) -> bool:
     """Delete a context file from disk."""
+    # file_id is in format {name}_{type}
     for md_file in CONTEXT_FILES_DIR.glob("*.md"):
-        if md_file.stem.startswith(file_id + "_"):
+        if md_file.stem == file_id:
             md_file.unlink()
             return True
     return False
@@ -723,7 +757,8 @@ async def get_context_files():
 @app.post("/api/context-files")
 async def add_context_file(file: ContextFile):
     """Add a new context file."""
-    file_id = str(int(os.urandom(4).hex(), 16))
+    # New ID format: {name}_{type}
+    file_id = f"{file.name}_{file.type}"
     save_context_file(file_id, file.type, file.name, file.content)
     return {
         "id": file_id,
@@ -737,9 +772,11 @@ async def update_context_file(file_id: str, file: ContextFile):
     """Update an existing context file."""
     # Delete old file and create new one
     delete_context_file(file_id)
-    save_context_file(file_id, file.type, file.name, file.content)
+    # Use new ID format: {name}_{type}
+    new_file_id = f"{file.name}_{file.type}"
+    save_context_file(new_file_id, file.type, file.name, file.content)
     return {
-        "id": file_id,
+        "id": new_file_id,
         "name": file.name,
         "type": file.type,
         "content": file.content
@@ -750,6 +787,48 @@ async def delete_context_file_endpoint(file_id: str):
     """Delete a context file."""
     delete_context_file(file_id)
     return {"status": "deleted"}
+
+@app.post("/api/context-files/{file_id}/set-default")
+async def set_context_file_default(file_id: str):
+    """Set a context file as the default for its type."""
+    files = load_context_files()
+    # Find the file
+    target_file = None
+    for f in files:
+        if f["id"] == file_id:
+            target_file = f
+            break
+    
+    if not target_file:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Load current defaults
+    defaults = load_context_defaults()
+    # Set this file as default for its type
+    defaults[target_file["type"]] = target_file["name"]
+    save_context_defaults(defaults)
+    
+    return {"status": "success", "type": target_file["type"], "name": target_file["name"]}
+
+@app.get("/api/context-files/defaults")
+async def get_context_defaults():
+    """Get default context files by type."""
+    return load_context_defaults()
+
+@app.get("/api/projects/{project_id}/context-settings")
+async def get_project_context_settings(project_id: str):
+    """Get context file settings for a project."""
+    settings = load_project_context_settings(project_id)
+    # If no settings, return defaults
+    if not settings:
+        settings = load_context_defaults()
+    return settings
+
+@app.post("/api/projects/{project_id}/context-settings")
+async def update_project_context_settings(project_id: str, settings: Dict[str, str]):
+    """Update context file settings for a project."""
+    save_project_context_settings(project_id, settings)
+    return {"status": "success", "project_id": project_id, "settings": settings}
 
 # Projects API
 

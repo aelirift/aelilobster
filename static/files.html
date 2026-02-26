@@ -16,6 +16,7 @@
         .file-item-mini:hover { border-color: var(--accent); }
         .file-item-mini.active { background: var(--accent); color: white; }
         .file-item-mini .file-type-badge { float: right; font-size: 10px; opacity: 0.7; }
+        .file-item-mini .default-badge { float: right; font-size: 10px; background: #4CAF50; color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
         .files-editor { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
         .files-editor textarea { flex: 1; min-height: 300px; font-family: monospace; }
         .files-editor .form-row { display: flex; gap: 12px; }
@@ -57,6 +58,7 @@
                     </div>
                     <div style="display: flex; gap: 12px;">
                         <button class="save-button" id="saveFileBtn">Save</button>
+                        <button class="save-button" id="setDefaultBtn" style="background: #4CAF50;">Set as Default</button>
                         <button class="save-button" id="deleteFileBtn" style="background: #f44336;">Delete</button>
                     </div>
                     <div id="statusMessage" class="config-status" style="display: none;"></div>
