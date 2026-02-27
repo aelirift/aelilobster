@@ -27,7 +27,7 @@ def load_projects() -> List[Dict[str, Any]]:
             for project_dir in user_dir.iterdir():
                 if project_dir.is_dir():
                     projects.append({
-                        "id": f"{user_name}_{project_dir.name}",
+                        "id": f"{user_name}-{project_dir.name}",
                         "name": project_dir.name,
                         "user": user_name,
                         "path": str(project_dir)

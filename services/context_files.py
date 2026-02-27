@@ -97,13 +97,25 @@ def save_context_file(file_id: str, file_type: str, name: str, content: str) -> 
         name: The name of the file
         content: The content to save
     """
-    # Sanitize name for filename
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Sanitize name for filename - REMOVE any type suffix if present
     safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip()
     if not safe_name:
         safe_name = "untitled"
+    
+    # Remove type suffix from name if it already contains it
+    # e.g., "default_pre-llm" with type "pre-llm" -> "default"
+    if safe_name.endswith(f"_{file_type}"):
+        safe_name = safe_name[:-len(f"_{file_type}")]
+    
     # New format: {name}_{type}.md
     filename = f"{safe_name}_{file_type}.md"
     filepath = CONTEXT_FILES_DIR / filename
+    
+    logger.info(f"[CONTEXT FILES SERVICE] Saving: file_id={file_id}, name={name}, type={file_type}, safe_name={safe_name}, filename={filename}")
+    
     with open(filepath, "w") as f:
         f.write(content)
 

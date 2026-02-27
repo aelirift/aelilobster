@@ -24,9 +24,15 @@ async function loadFileTypes() {
 }
 
 function renderFileTypeOptions() {
+    const currentType = fileTypeSelect.value;
     fileTypeSelect.innerHTML = fileTypes.map(type => 
         `<option value="${type}">${type}</option>`
     ).join('');
+    
+    // Restore selection if it was set
+    if (currentType && fileTypes.includes(currentType)) {
+        fileTypeSelect.value = currentType;
+    }
 }
 
 // Load files
@@ -64,6 +70,7 @@ function renderFiles(files) {
 
 // Select file to edit
 function selectFile(id) {
+    console.log('[FILES] selectFile called with id:', id, 'allFiles:', allFiles.map(f => f.id));
     const file = allFiles.find(f => f.id === id);
     if (file) {
         editingFileId = id;
@@ -71,6 +78,9 @@ function selectFile(id) {
         fileTypeSelect.value = file.type;
         fileContentInput.value = file.content;
         renderFiles(allFiles);
+        console.log('[FILES] Selected file - name:', file.name, 'type:', file.type, 'editingFileId:', editingFileId);
+    } else {
+        console.error('[FILES] File not found for id:', id);
     }
 }
 
@@ -99,6 +109,9 @@ async function saveFile() {
                 body: JSON.stringify({ name, type, content })
             });
             if (!response.ok) throw new Error('Failed to update');
+            const result = await response.json();
+            // Update editingFileId to new ID if name/type changed
+            editingFileId = result.id;
             showStatus('File updated', 'success');
         } else {
             // Create
@@ -108,9 +121,17 @@ async function saveFile() {
                 body: JSON.stringify({ name, type, content })
             });
             if (!response.ok) throw new Error('Failed to create');
+            const result = await response.json();
+            // Set editingFileId to new file ID
+            editingFileId = result.id;
             showStatus('File created', 'success');
         }
-        loadFiles();
+        // Reload files and re-select after save completes
+        await loadFiles();
+        // Re-select the file to ensure UI is in sync
+        if (editingFileId) {
+            selectFile(editingFileId);
+        }
     } catch (error) {
         showStatus('Error: ' + error.message, 'error');
     }
@@ -154,6 +175,13 @@ async function setAsDefault() {
         return;
     }
     
+    // Verify file exists in current list
+    const fileExists = allFiles.some(f => f.id === editingFileId);
+    if (!fileExists) {
+        showStatus('File not found. Please re-select the file.', 'error');
+        return;
+    }
+    
     try {
         const response = await fetch(`/api/context-files/${editingFileId}/set-default`, {
             method: 'POST'
@@ -185,5 +213,8 @@ deleteFileBtn.addEventListener('click', deleteFile);
 document.getElementById('setDefaultBtn').addEventListener('click', setAsDefault);
 
 // Init
-loadFileTypes();
-loadFiles();
+async function init() {
+    await loadFileTypes();
+    await loadFiles();
+}
+init();

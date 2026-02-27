@@ -107,9 +107,21 @@ function renderTraceEntry(entry, isInitial) {
     
     traceContent.appendChild(domEntry);
     
-    // Always scroll to bottom for new trace entries
-    traceContent.scrollTop = traceContent.scrollHeight;
+    // Only scroll to bottom if user hasn't scrolled up
+    const isNearBottom = traceContent.scrollHeight - traceContent.scrollTop - traceContent.clientHeight < 100;
+    if (isNearBottom || !traceUserScrolledUp) {
+        traceContent.scrollTop = traceContent.scrollHeight;
+    }
 }
+
+// Track when user scrolls up in trace
+let traceUserScrolledUp = false;
+traceContent.addEventListener('scroll', () => {
+    const isNearBottom = traceContent.scrollHeight - traceContent.scrollTop - traceContent.clientHeight < 100;
+    if (!isNearBottom) {
+        traceUserScrolledUp = true;
+    }
+});
 
 function clearTrace() {
     traceContent.innerHTML = `
@@ -117,6 +129,8 @@ function clearTrace() {
             <p style="font-size: 12px;">Waiting for input...</p>
         </div>
     `;
+    // Reset scroll flag when clearing
+    traceUserScrolledUp = false;
     traceEntries = [];
     saveTraceState();
 }

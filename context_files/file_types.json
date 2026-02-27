@@ -1,1 +1,1 @@
-["pre-llm", "post-llm", "pre-code", "post-code", "pre-pod", "post-pod", "pre-execute", "post-execute", "pre-display", "debugger", "pod"]
+["pre-llm", "post-llm", "pre-code", "post-code", "pre-pod", "post-pod", "pre-execute", "post-execute", "pre-display", "debugger", "pod", "names"]

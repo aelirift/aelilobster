@@ -31,6 +31,24 @@ def extract_code_blocks(text: str) -> List[Dict[str, Any]]:
             })
             fenced_codes.append(code.strip())
     
+    # Pattern for single backtick commands like `ls` or `ls -la`
+    # These often appear in LLM explanations like: use `ls` to list files
+    single_backtick_pattern = r'`([^`]+)`'
+    single_matches = re.findall(single_backtick_pattern, text)
+    for cmd in single_matches:
+        cmd = cmd.strip()
+        # Only add if it looks like a command (has spaces, or is short)
+        if cmd and not cmd.startswith('#') and len(cmd) < 100:
+            # Check if already in fenced or duplicate
+            is_duplicate = any(cmd in fc or fc in cmd for fc in fenced_codes)
+            if not is_duplicate:
+                code_blocks.append({
+                    'language': 'shell',
+                    'code': cmd,
+                    'type': 'single-backtick'
+                })
+                fenced_codes.append(cmd)
+    
     # Pattern for inline code that looks like shell commands
     # Lines starting with $ or > at the start
     inline_pattern = r'^(?:\$\s*|>\s*)(.+)$'

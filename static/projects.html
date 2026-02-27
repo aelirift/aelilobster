@@ -7,13 +7,16 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         .projects-page { display: flex; gap: 20px; padding: 20px; height: calc(100vh - 60px); }
-        .projects-left { flex: 1; max-width: 400px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
-        .projects-right { width: 600px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+        .projects-left { flex: 1; max-width: 800px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+        .projects-right { width: 500px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
         .projects-right h3 { margin: 0 0 12px 0; font-size: 16px; }
         .project-settings { display: flex; flex-direction: column; gap: 12px; }
         .project-settings .form-group { margin-bottom: 8px; }
         .project-settings label { display: block; font-size: 12px; margin-bottom: 4px; color: var(--text-secondary); }
         .project-settings select { width: 100%; }
+        .pods-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+        .pods-section h4 { margin: 0 0 12px 0; font-size: 14px; }
+        .form-select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); font-size: 14px; }
     </style>
 </head>
 <body>
@@ -35,6 +38,14 @@
                     <div class="user-info">
                         <span class="user-label">User:</span>
                         <span class="user-name">test_user</span>
+                    </div>
+                    
+                    <!-- Project Selector -->
+                    <div class="form-group">
+                        <label>Select Project</label>
+                        <select id="headerProject" class="form-select">
+                            <option value="">Select Project</option>
+                        </select>
                     </div>
                     
                     <!-- Add New Project Form -->
@@ -59,6 +70,13 @@
                     </div>
                     
                     <div id="statusMessage" class="config-status" style="display: none;"></div>
+                    
+                    <!-- Standalone Pods Section -->
+                    <div class="pods-section">
+                        <h4>Project Pods</h4>
+                        <button class="save-button" id="showPodsBtnGlobal" style="width: 100%;">Show Running Pods</button>
+                        <div id="globalPodsContainer" style="margin-top: 12px;"></div>
+                    </div>
                 </div>
 
                 <!-- Right: Project Settings -->

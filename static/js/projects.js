@@ -15,6 +15,7 @@ let editingProjectId = null;
 let currentProjectSettings = {};
 let allContextFiles = [];
 let allFileTypes = [];
+let allProjects = [];
 
 // Load projects from server on page load
 async function loadProjects() {
@@ -23,10 +24,72 @@ async function loadProjects() {
         if (!response.ok) throw new Error('Failed to load projects');
         
         const projects = await response.json();
+        allProjects = projects;
         renderProjects(projects);
+        populateProjectSelector(projects);
+        
+        // If only one project, auto-select it
+        if (projects.length === 1) {
+            const projectSelect = document.getElementById('headerProject');
+            if (projectSelect) {
+                projectSelect.value = projects[0].id;
+                selectProject(projects[0].id);
+            }
+        }
     } catch (error) {
         showStatus('Failed to load projects: ' + error.message, 'error');
     }
+}
+
+// Populate project selector dropdown
+function populateProjectSelector(projects) {
+    const projectSelect = document.getElementById('headerProject');
+    if (!projectSelect) return;
+    
+    projectSelect.innerHTML = '<option value="">Select Project</option>';
+    
+    projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = `${project.name} (${project.user})`;
+        projectSelect.appendChild(option);
+    });
+    
+    // Load saved project from localStorage
+    const savedProject = localStorage.getItem('selectedProject');
+    if (savedProject) {
+        projectSelect.value = savedProject;
+    }
+}
+
+// Handle project selector change
+function handleProjectSelectorChange() {
+    const projectSelect = document.getElementById('headerProject');
+    if (!projectSelect) return;
+    
+    const projectId = projectSelect.value;
+    if (projectId) {
+        localStorage.setItem('selectedProject', projectId);
+        selectProject(projectId);
+    }
+}
+
+// Select a project (click on card or dropdown)
+function selectProject(projectId) {
+    const project = allProjects.find(p => p.id === projectId);
+    if (!project) return;
+    
+    // Show project settings
+    showProjectSettings(projectId, project.name);
+    
+    // Update header selector if exists
+    const projectSelect = document.getElementById('headerProject');
+    if (projectSelect) {
+        projectSelect.value = projectId;
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('selectedProject', projectId);
 }
 
 // Render projects list
@@ -45,13 +108,13 @@ function renderProjects(projects) {
     }
     
     projectsList.innerHTML = projects.map(project => `
-        <div class="project-card" data-id="${project.id}">
+        <div class="project-card" data-id="${project.id}" onclick="selectProject('${project.id}')" style="cursor: pointer;">
             <div class="project-header">
                 <div class="project-info">
                     <span class="project-name">${escapeHtml(project.name)}</span>
                     <span class="project-user">${escapeHtml(project.user)}</span>
                 </div>
-                <div class="project-actions">
+                <div class="project-actions" onclick="event.stopPropagation();">
                     <button class="project-action-btn use-btn" onclick="openProject('${project.id}')" title="Open project">
                         Open
                     </button>
@@ -372,6 +435,91 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Global pods functionality
+const showPodsBtnGlobal = document.getElementById('showPodsBtnGlobal');
+const globalPodsContainer = document.getElementById('globalPodsContainer');
+
+// Show pods for selected project (global button)
+async function showGlobalPods() {
+    const projectSelect = document.getElementById('headerProject');
+    const projectId = projectSelect ? projectSelect.value : null;
+    
+    if (!projectId) {
+        globalPodsContainer.innerHTML = '<p style="color: var(--text-secondary);">Select a project first</p>';
+        return;
+    }
+    
+    globalPodsContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading pods...</p>';
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/pods`);
+        const data = await response.json();
+        
+        if (!data.pods || data.pods.length === 0) {
+            globalPodsContainer.innerHTML = `
+                <p style="color: var(--text-secondary);">No pods found.</p>
+                <button class="save-button" onclick="startGlobalPod('${projectId}')" style="width: 100%; margin-top: 8px;">Start Pod</button>
+            `;
+            return;
+        }
+        
+        globalPodsContainer.innerHTML = data.pods.map(pod => `
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${escapeHtml(pod.name)}</strong>
+                        <span style="font-size: 12px; color: ${pod.status.includes('Up') ? 'green' : 'orange'};">
+                            ${escapeHtml(pod.status)}
+                        </span>
+                    </div>
+                    <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #dc3545;" 
+                        onclick="killGlobalPod('${projectId}')">
+                        Stop
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        globalPodsContainer.innerHTML = '<p style="color: red;">Failed to load pods: ' + error.message + '</p>';
+    }
+}
+
+async function startGlobalPod(projectId) {
+    globalPodsContainer.innerHTML = '<p style="color: var(--text-secondary);">Starting pod...</p>';
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/pods/start`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            globalPodsContainer.innerHTML = '<p style="color: green;">' + data.message + '</p>';
+            setTimeout(showGlobalPods, 1000);
+        } else {
+            globalPodsContainer.innerHTML = '<p style="color: red;">' + data.message + '</p>';
+        }
+    } catch (error) {
+        globalPodsContainer.innerHTML = '<p style="color: red;">Failed: ' + error.message + '</p>';
+    }
+}
+
+async function killGlobalPod(projectId) {
+    if (!confirm('Stop this pod?')) return;
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/pods/kill`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            showGlobalPods();
+        } else {
+            alert('Failed: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed: ' + error.message);
+    }
+}
+
 // Event listeners
 createProjectBtn.addEventListener('click', createProject);
 projectNameInput.addEventListener('keypress', (e) => {
@@ -379,6 +527,13 @@ projectNameInput.addEventListener('keypress', (e) => {
 });
 saveSettingsBtn.addEventListener('click', saveProjectSettings);
 showPodsBtn.addEventListener('click', showProjectPods);
+showPodsBtnGlobal.addEventListener('click', showGlobalPods);
+
+// Project selector event listener
+const projectSelect = document.getElementById('headerProject');
+if (projectSelect) {
+    projectSelect.addEventListener('change', handleProjectSelectorChange);
+}
 
 // Initialize
 loadProjects();

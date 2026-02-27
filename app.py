@@ -395,14 +395,14 @@ async def trace_stream():
         last_index = 0
         state = get_looper_state()
         
-        while state.is_running or last_index < len(trace_logger.entries):
-            # Check for new entries
-            current_entries = trace_logger.entries
-            if last_index < len(current_entries):
+        while state.is_running or last_index < len(trace_logger):
+            # Check for new entries - use get_all() for thread-safe access
+            all_entries = trace_logger.get_all()
+            if last_index < len(all_entries):
                 # Send new entries
-                new_entries = current_entries[last_index:]
+                new_entries = all_entries[last_index:]
                 for entry in new_entries:
-                    yield f"data: {json.dumps(entry.to_dict())}\n\n"
+                    yield f"data: {json.dumps(entry)}\n\n"
                     last_index += 1
             
             # Small delay to avoid tight loop
@@ -499,22 +499,60 @@ async def add_context_file(file: ContextFileRequest):
     """Add a new context file."""
     # New ID format: {name}_{type}
     file_id = f"{file.name}_{file.type}"
+    
+    # Check if file already exists
+    existing_files = context_files_service.load_context_files()
+    existing_file = next((f for f in existing_files if f["id"] == file_id), None)
+    
+    if existing_file:
+        # Update existing file instead of creating duplicate
+        context_files_service.save_context_file(file_id, file.type, file.name, file.content)
+        return {
+            "id": file_id,
+            "name": file.name,
+            "type": file.type,
+            "content": file.content,
+            "status": "updated"
+        }
+    
     context_files_service.save_context_file(file_id, file.type, file.name, file.content)
     return {
         "id": file_id,
         "name": file.name,
         "type": file.type,
-        "content": file.content
+        "content": file.content,
+        "status": "created"
     }
 
 
 @app.put("/api/context-files/{file_id}")
 async def update_context_file(file_id: str, file: ContextFileRequest):
     """Update an existing context file."""
-    # Delete old file and create new one
-    context_files_service.delete_context_file(file_id)
+    import logging
+    logger = logging.getLogger(__name__)
+    
     # Use new ID format: {name}_{type}
     new_file_id = f"{file.name}_{file.type}"
+    
+    logger.info(f"[CONTEXT FILES] PUT update: old_id={file_id}, new_id={new_file_id}, name={file.name}, type={file.type}")
+    
+    # If name/type changed, handle the file renaming
+    if new_file_id != file_id:
+        logger.info(f"[CONTEXT FILES] ID changed, deleting old file: {file_id}")
+        # First, check if a file already exists with the new ID
+        existing_files = context_files_service.load_context_files()
+        existing_file = next((f for f in existing_files if f["id"] == new_file_id), None)
+        
+        if existing_file:
+            logger.info(f"[CONTEXT FILES] Conflicting file found, deleting: {new_file_id}")
+            # Update existing file instead of creating new one
+            context_files_service.delete_context_file(new_file_id)
+        
+        # Delete the old file
+        context_files_service.delete_context_file(file_id)
+    
+    # Save the file (either with new ID or same ID)
+    logger.info(f"[CONTEXT FILES] Saving file: {new_file_id}")
     context_files_service.save_context_file(new_file_id, file.type, file.name, file.content)
     return {
         "id": new_file_id,
