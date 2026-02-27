@@ -479,10 +479,19 @@ async function sendMessage() {
     let traceEventSource;
     
     try {
+        // Start a new trace session
+        const traceResponse = await fetch('/api/trace/start', { method: 'POST' });
+        const traceData = await traceResponse.json();
+        const traceId = traceData.trace_id;
+        
+        // Set trace ID in session storage for persistence
+        sessionStorage.setItem('currentTraceId', traceId);
+        
         // TRACE: User input
         addTrace('input', 'User Input', {
             prompt: content,
-            model: modelSelect.value
+            model: modelSelect.value,
+            trace_id: traceId
         });
         
         // Use the looper endpoint
@@ -606,13 +615,13 @@ async function sendMessage() {
             });
         }
         
-        // Display trace entries from looper
+        // Display trace entries from looper (append, don't overwrite!)
+        // This is intentional - real-time SSE already shows entries as they come
+        // We only add any final entries that might be missing
         if (data.trace_entries && data.trace_entries.length > 0) {
-            // Clear existing trace and show looper trace
-            clearTrace();
-            data.trace_entries.forEach(entry => {
-                addTrace(entry.type, entry.label, entry.data);
-            });
+            // Just log that looper finished - don't clear or overwrite real-time entries
+            // The SSE already showed everything in real-time
+            console.log('Looper finished with', data.trace_entries.length, 'trace entries');
         }
         
         renderMessages();

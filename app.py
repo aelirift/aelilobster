@@ -45,6 +45,7 @@ from services.looper import (
     get_looper_state,
     trace_logger,
 )
+from services import trace_log
 
 # Alias for backward compatibility
 load_config = config.load_config
@@ -410,6 +411,41 @@ async def trace_stream():
         yield f"data: {json.dumps({'type': 'done', 'label': 'Stream Complete', 'data': {}})}\n\n"
     
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.post("/api/trace/start")
+async def start_trace():
+    """
+    Start a new trace session and get a trace ID.
+    Returns a trace ID that can be used to identify this trace session.
+    """
+    trace_id = trace_log.create_trace_id()
+    # Set trace ID for the logger
+    trace_logger.set_trace_id(trace_id)
+    # Clear previous trace
+    trace_logger.clear()
+    return {"trace_id": trace_id}
+
+
+@app.get("/api/trace/{trace_id}")
+async def get_trace(trace_id: str, since_index: int = 0):
+    """
+    Get trace entries for a specific trace ID from the persistent log file.
+    This allows the frontend to read trace entries even after page refresh.
+    
+    Args:
+        trace_id: The trace session ID
+        since_index: Return entries from this index onwards
+    """
+    entries = trace_log.get_trace_entries(trace_id, since_index)
+    return {"entries": entries, "trace_id": trace_id}
+
+
+@app.delete("/api/trace/{trace_id}")
+async def clear_trace_id(trace_id: str):
+    """Clear trace entries for a specific trace ID."""
+    trace_log.clear_trace_log(trace_id)
+    return {"status": "cleared", "trace_id": trace_id}
 
 # =============================================================================
 # Static Files
