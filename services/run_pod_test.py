@@ -10,6 +10,8 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from services.naming import get_pod_name as get_pod_name_normalized
+
 
 # Default pod settings
 DEFAULT_POD_SETTINGS = {
@@ -60,8 +62,14 @@ def get_pod_settings() -> Dict[str, Any]:
 
 
 def get_pod_name(user_name: str, project_name: str) -> str:
-    """Generate pod name based on user and project."""
-    return f"{user_name}-{project_name}-pod"
+    """Generate pod name based on user and project.
+    
+    Uses normalized naming to ensure consistency:
+    - Username keeps underscores (test_user)
+    - Project uses hyphens (myproject)
+    - Format: {user}-{project}-pod
+    """
+    return get_pod_name_normalized(user_name, project_name)
 
 
 def kill_pod(user_name: str, project_name: str) -> Dict[str, Any]:

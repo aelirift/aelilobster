@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 import shutil
 
 from services.config import PROJECTS_DIR, parse_project_id
+from services.naming import get_project_dir, normalize_for_pod
 
 
 def load_projects() -> List[Dict[str, Any]]:

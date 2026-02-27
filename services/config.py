@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 
+from services.naming import parse_project_id as parse_project_id_normalized
+
 # Configuration file path
 CONFIG_FILE = Path(__file__).parent.parent / "config.json"
 
@@ -18,28 +20,14 @@ def parse_project_id(project_id: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Parse project_id into (user_name, project_name).
     
+    Uses centralized naming module for consistency.
     Supports formats:
     - user-project (hyphen): "test_user-myproject" -> ("test_user", "myproject")
     - user_project (underscore): "test_user_myproject" -> ("test_user", "myproject")
     
     Returns (None, None) if invalid format.
     """
-    if not project_id:
-        return None, None
-    
-    # Try hyphen first (preferred format per naming_conventions.md)
-    if "-" in project_id:
-        parts = project_id.split("-", 1)
-        if len(parts) == 2:
-            return parts[0], parts[1]
-    
-    # Try underscore (legacy format)
-    if "_" in project_id:
-        parts = project_id.split("_", 1)
-        if len(parts) == 2:
-            return parts[0], parts[1]
-    
-    return None, None
+    return parse_project_id_normalized(project_id)
 
 
 def load_config() -> Dict[str, Any]:

@@ -8,9 +8,10 @@ from typing import Optional, Dict, Any
 from services.run_pod_test import (
     run_code_in_pod,
     ensure_podman_installed,
-    get_pod_name,
+    get_pod_name as get_pod_name_from_run_pod,
     get_pod_settings
 )
+from services.naming import get_pod_name_normalized, normalize_for_pod
 
 
 class Executor:
@@ -34,6 +35,7 @@ class Executor:
     def get_pod_name(self, user_name: Optional[str] = None, project_name: Optional[str] = None, suffix: str = None) -> str:
         """
         Get the container name for a pod.
+        Uses normalized naming for consistency.
         
         Args:
             user_name: User name
@@ -41,12 +43,13 @@ class Executor:
             suffix: Optional suffix for the container name
             
         Returns:
-            Container name
+            Container name (normalized)
         """
         if user_name and project_name:
-            base_name = get_pod_name(user_name, project_name)
+            # Use normalized naming
+            base_name = get_pod_name_normalized(user_name, project_name)
         else:
-            base_name = "test-pod"
+            base_name = "default-default-pod"
         
         if suffix:
             return f"{base_name}-{suffix}"
