@@ -61,7 +61,7 @@ def add_trace_entry(
             "type": entry_type,
             "label": label,
             "data": _serialize_data(data),
-            "time": datetime.now().strftime("%H:%M:%S"),
+            "time": datetime.now().strftime("%H:%M:%S.%f")[:-3],  # Include milliseconds
             "timestamp": datetime.now().isoformat()
         }
         
@@ -169,7 +169,7 @@ class PersistentTraceLogger:
                 "type": entry_type,
                 "label": label,
                 "data": _serialize_data(data),
-                "time": datetime.now().strftime("%H:%M:%S"),
+                "time": datetime.now().strftime("%H:%M:%S.%f")[:-3],  # Include milliseconds
                 "timestamp": datetime.now().isoformat()
             }
             self._entries.append(entry)

@@ -19,7 +19,7 @@ class TraceEntry:
     type: str
     label: str
     data: Any
-    time: str = field(default_factory=lambda: datetime.now().strftime("%H:%M:%S"))
+    time: str = field(default_factory=lambda: datetime.now().strftime("%H:%M:%S.%f")[:-3])  # Include milliseconds
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""

@@ -46,6 +46,7 @@ from services.looper import (
     trace_logger,
 )
 from services import trace_log
+from services import pre_llm
 
 # Alias for backward compatibility
 load_config = config.load_config
@@ -597,6 +598,42 @@ async def delete_project(project_id: str):
     if projects_service.delete_project_folder(user, name):
         return {"status": "deleted"}
     raise HTTPException(status_code=404, detail="Project not found")
+
+
+# =============================================================================
+# Project Pods Endpoints
+# =============================================================================
+
+@app.get("/api/projects/{project_id}/pods")
+async def get_project_pods(project_id: str):
+    """Get all pods for a project."""
+    pods = pre_llm.get_project_pods(project_id)
+    return {"pods": pods, "project_id": project_id}
+
+
+@app.post("/api/projects/{project_id}/pods/start")
+async def start_project_pod(project_id: str):
+    """Start or create a pod for the project."""
+    user_name, project_name = parse_project_id(project_id)
+    if not user_name or not project_name:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
+    
+    # Get project path
+    project_path = str(PROJECTS_DIR / user_name / project_name)
+    
+    result = pre_llm.ensure_pod_ready(user_name, project_name, project_path)
+    return result
+
+
+@app.post("/api/projects/{project_id}/pods/kill")
+async def kill_project_pod(project_id: str):
+    """Kill a pod for the project."""
+    user_name, project_name = parse_project_id(project_id)
+    if not user_name or not project_name:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
+    
+    result = pre_llm.kill_project_pod(user_name, project_name)
+    return result
 
 # =============================================================================
 # Pod Management Endpoints

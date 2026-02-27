@@ -242,7 +242,7 @@ traceStop.addEventListener('click', async () => {
 });
 
 // Load saved state from localStorage
-function loadState() {
+async function loadState() {
     const savedModel = localStorage.getItem('selectedModel');
     if (savedModel) {
         modelSelect.value = savedModel;
@@ -258,29 +258,37 @@ function loadState() {
         }
     }
     
-    // Load projects and set selected project
-    loadProjects();
+    // Load projects first, then set selected project after
+    await loadProjects();
     
     // Update project selector state based on existing messages
     updateProjectSelectorState();
     
-    // Check URL for project parameter
+    // Get the saved project BEFORE checking URL
+    const savedProject = localStorage.getItem('selectedProject');
+    
+    // Check URL for project parameter (takes priority)
     const urlParams = new URLSearchParams(window.location.search);
     const projectParam = urlParams.get('project');
+    
+    const projectSelect = document.getElementById('headerProject');
     if (projectParam) {
-        const projectSelect = document.getElementById('headerProject');
         projectSelect.value = projectParam;
         localStorage.setItem('selectedProject', projectParam);
-    } else {
-        const savedProject = localStorage.getItem('selectedProject');
-        if (savedProject) {
-            const projectSelect = document.getElementById('headerProject');
-            projectSelect.value = savedProject;
-        }
+    } else if (savedProject) {
+        // Try to set saved project - it should now be in the dropdown
+        projectSelect.value = savedProject;
+    }
+    
+    // If value is still empty but we have a saved project, the project might have been deleted
+    // In that case, keep it empty
+    if (!projectSelect.value && savedProject) {
+        console.log('Saved project not found:', savedProject);
+        localStorage.removeItem('selectedProject');
     }
 }
 
-// Load projects from API
+// Load projects from API and return the projects list
 async function loadProjects() {
     try {
         const response = await fetch('/api/projects');
@@ -295,8 +303,11 @@ async function loadProjects() {
             option.textContent = `${project.name} (${project.user})`;
             projectSelect.appendChild(option);
         });
+        
+        return projects;
     } catch (e) {
         console.error('Failed to load projects:', e);
+        return [];
     }
 }
 

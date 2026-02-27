@@ -1,0 +1,1 @@
+Think of the errors and how to resolve it with step by step codes to verify if it's the actual error, if it is, how to resolve the error, if not, what is the next verification to check if that's the error and so on.  Each step should be in code.  Be as detailed in steps as you can, using mostly codes with comments.

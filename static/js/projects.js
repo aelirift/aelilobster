@@ -274,12 +274,111 @@ async function saveProjectSettings() {
     }
 }
 
+// Pods functionality
+const showPodsBtn = document.getElementById('showPodsBtn');
+const podsContainer = document.getElementById('podsContainer');
+
+// Show pods for the selected project
+async function showProjectPods() {
+    if (!editingProjectId) {
+        podsContainer.innerHTML = '<p style="color: var(--text-secondary);">Select a project first</p>';
+        return;
+    }
+    
+    podsContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading pods...</p>';
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/pods`);
+        const data = await response.json();
+        
+        if (!data.pods || data.pods.length === 0) {
+            podsContainer.innerHTML = `
+                <p style="color: var(--text-secondary);">No pods found for this project.</p>
+                <button class="save-button" onclick="startProjectPod()" style="width: 100%; margin-top: 8px;">Start Pod</button>
+            `;
+            return;
+        }
+        
+        podsContainer.innerHTML = data.pods.map(pod => `
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${escapeHtml(pod.name)}</strong>
+                        <span style="font-size: 12px; color: ${pod.status.includes('Up') ? 'green' : 'orange'};">
+                            ${escapeHtml(pod.status)}
+                        </span>
+                    </div>
+                    <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #dc3545;" 
+                        onclick="killProjectPod('${escapeHtml(pod.name)}')">
+                        Stop
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        podsContainer.innerHTML = '<p style="color: red;">Failed to load pods: ' + error.message + '</p>';
+    }
+}
+
+// Start a pod for the project
+async function startProjectPod() {
+    if (!editingProjectId) return;
+    
+    podsContainer.innerHTML = '<p style="color: var(--text-secondary);">Starting pod...</p>';
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/pods/start`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            podsContainer.innerHTML = '<p style="color: green;">' + data.message + '</p>';
+            // Refresh pods after a delay
+            setTimeout(showProjectPods, 1000);
+        } else {
+            podsContainer.innerHTML = '<p style="color: red;">' + data.message + '</p>';
+        }
+    } catch (error) {
+        podsContainer.innerHTML = '<p style="color: red;">Failed to start pod: ' + error.message + '</p>';
+    }
+}
+
+// Kill a pod
+async function killProjectPod(podName) {
+    if (!editingProjectId || !confirm('Stop this pod?')) return;
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/pods/kill`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            showProjectPods();
+        } else {
+            alert('Failed to stop pod: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to stop pod: ' + error.message);
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Event listeners
 createProjectBtn.addEventListener('click', createProject);
 projectNameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') createProject();
 });
 saveSettingsBtn.addEventListener('click', saveProjectSettings);
+showPodsBtn.addEventListener('click', showProjectPods);
 
 // Initialize
 loadProjects();
