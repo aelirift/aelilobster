@@ -93,28 +93,28 @@ function renderProjects(projects) {
     }
     
     projectsList.innerHTML = projects.map(project => `
-        <div class="project-card" data-id="${project.id}" onclick="selectProject('${project.id}')" style="cursor: pointer;">
+        <div class="project-card" data-id="${project.id}">
             <div class="project-header">
-                <div class="project-info">
+                <div class="project-info" onclick="selectProject('${project.id}')" style="cursor: pointer; flex: 1;">
                     <span class="project-name">${escapeHtml(project.name)}</span>
                     <span class="project-user">${escapeHtml(project.user)}</span>
                 </div>
-                <div class="project-actions" onclick="event.stopPropagation();">
-                    <button class="project-action-btn settings-btn" onclick="showProjectSettings('${project.id}', '${escapeHtml(project.name)}')" title="Settings">
+                <div class="project-actions">
+                    <button class="project-action-btn settings-btn" onclick="event.stopPropagation(); showProjectSettings('${project.id}', '${escapeHtml(project.name)}')" title="Settings">
                         ⚙️
                     </button>
-                    <button class="project-action-btn pods-btn" onclick="showProjectPodsPanel('${project.id}')" title="Pods">
+                    <button class="project-action-btn pods-btn" onclick="event.stopPropagation(); showProjectPodsPanel('${project.id}')" title="Pods">
                         📦
                     </button>
-                    <button class="project-action-btn secrets-btn" onclick="showProjectSecretsPanel('${project.id}', '${escapeHtml(project.name)}')" title="Secrets">
+                    <button class="project-action-btn secrets-btn" onclick="event.stopPropagation(); showProjectSecretsPanel('${project.id}', '${escapeHtml(project.name)}')" title="Secrets">
                         🔐
                     </button>
-                    <button class="project-action-btn delete-btn" onclick="deleteProject('${project.id}')" title="Delete">
+                    <button class="project-action-btn delete-btn" onclick="event.stopPropagation(); deleteProject('${project.id}')" title="Delete">
                         🗑️
                     </button>
                 </div>
             </div>
-            <div class="project-path">${escapeHtml(project.path)}</div>
+            <div class="project-path" onclick="selectProject('${project.id}')" style="cursor: pointer;">${escapeHtml(project.path)}</div>
         </div>
     `).join('');
 }
