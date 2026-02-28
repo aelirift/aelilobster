@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════════════════════════════
+   COMMAND CENTER — CSS
+   ═══════════════════════════════════════════════════════════════════════ */
+        :root {
+            --bg-base: #080c10;
+            --bg-surface: #0e1419;
+            --bg-panel: #131a22;
+            --bg-elevated: #1a2330;
+            --bg-input: #0d1117;
+            --border: #1e2a38;
+            --border-subtle: #161f2b;
+            --text-primary: #e6edf3;
+            --text-secondary: #7d8590;
+            --text-muted: #484f58;
+            --accent: #00d4ff;
+            --accent-dim: rgba(0, 212, 255, 0.12);
+            --accent-glow: rgba(0, 212, 255, 0.25);
+            --green: #3fb950;
+            --green-dim: rgba(63, 185, 80, 0.12);
+            --amber: #d29922;
+            --amber-dim: rgba(210, 153, 34, 0.12);
+            --red: #f85149;
+            --red-dim: rgba(248, 81, 73, 0.12);
+            --idle: #586574;
+            --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+            --font-heading: 'Syne', 'Inter', -apple-system, sans-serif;
+            --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 13px;
+        }
+
+        /* ── Page Shell ───────────────────────────────────────────────────────── */
+        .cc-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ── Header ───────────────────────────────────────────────────────────── */
+        .cc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            height: 56px;
+            min-height: 56px;
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .cc-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .pod-title {
+            font-family: var(--font-heading);
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+        }
+
+        .status-pill.running {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .status-pill.idle {
+            background: rgba(88, 101, 116, 0.15);
+            color: var(--idle);
+        }
+
+        .status-pill.error {
+            background: var(--red-dim);
+            color: var(--red);
+        }
+
+        .status-pill .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-pill.running .dot {
+            background: var(--green);
+        }
+
+        .status-pill.idle .dot {
+            background: var(--idle);
+        }
+
+        .status-pill.error .dot {
+            background: var(--red);
+        }
+
+        .cc-header-meta {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .meta-value {
+            font-family: var(--font-mono);
+            color: var(--accent);
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .uptime {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--accent);
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .cc-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hdr-btn {
+            padding: 6px 14px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: all 0.15s;
+            letter-spacing: .3px;
+        }
+
+        .hdr-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .hdr-btn.danger:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* ── 3-Column Grid ────────────────────────────────────────────────────── */
+        .cc-grid {
+            display: grid;
+            grid-template-columns: 260px 1fr 320px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── Panel base ───────────────────────────────────────────────────────── */
+        .cc-panel {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .cc-panel:last-child {
+            border-right: none;
+        }
+
+        .panel-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-family: var(--font-heading);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+        }
+
+        /* ════════════════ LEFT — AGENT ROSTER ════════════════ */
+        .roster-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .agent-row {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .agent-row:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+        }
+
+        .agent-row.selected {
+            background: var(--accent-dim);
+            border-color: rgba(0, 212, 255, 0.3);
+        }
+
+        .agent-row-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .agent-name {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .agent-role {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .agent-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .agent-dot.active {
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: pulse-dot 2s infinite;
+        }
+
+        .agent-dot.idle {
+            background: var(--idle);
+        }
+
+        .agent-dot.queued {
+            background: var(--amber);
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        .agent-dot.error {
+            background: var(--red);
+        }
+
+        .agent-task {
+            font-size: 11px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 6px;
+        }
+
+        .agent-progress {
+            height: 3px;
+            border-radius: 2px;
+            background: var(--bg-base);
+            overflow: hidden;
+        }
+
+        .agent-progress-bar {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        /* ════════════════ CENTER — COMMAND HUB ════════════════ */
+        .center-col {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Head Node Section */
+        .head-node-section {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .head-node-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .head-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: .5px;
+            background: var(--bg-base);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .head-avatar::after {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(0, 212, 255, 0.2);
+            animation: pulse-ring 3s infinite;
+        }
+
+        .head-info .head-name {
+            font-family: var(--font-heading);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .head-info .head-role {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .head-info .head-status {
+            font-size: 10px;
+            color: var(--green);
+            font-family: var(--font-mono);
+            margin-top: 2px;
+        }
+
+        .chat-history {
+            max-height: 220px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-right: 4px;
+        }
+
+        .chat-msg {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.5;
+            animation: fadeSlideUp 0.25s ease;
+        }
+
+        .chat-msg.user {
+            background: var(--accent-dim);
+            border-left: 2px solid var(--accent);
+            color: var(--text-primary);
+        }
+
+        .chat-msg.head {
+            background: var(--bg-elevated);
+            border-left: 2px solid var(--green);
+            color: var(--text-primary);
+        }
+
+        .chat-msg.delegate {
+            background: transparent;
+            color: var(--amber);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 4px 12px;
+        }
+
+        .chat-msg .msg-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-input-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        .chat-input-row input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent-dim);
+        }
+
+        .chat-input-row input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .chat-send {
+            padding: 10px 18px;
+            border-radius: 4px;
+            border: none;
+            background: var(--accent);
+            color: var(--bg-base);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            letter-spacing: .5px;
+        }
+
+        .chat-send:hover {
+            filter: brightness(1.15);
+        }
+
+        /* Comms Log Section */
+        .comms-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .comms-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .comms-filters {
+            display: flex;
+            gap: 4px;
+        }
+
+        .comms-filter {
+            padding: 4px 10px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .comms-filter:hover {
+            color: var(--text-secondary);
+            border-color: var(--text-muted);
+        }
+
+        .comms-filter.active {
+            background: var(--accent-dim);
+            border-color: rgba(0, 212, 255, 0.3);
+            color: var(--accent);
+        }
+
+        .comms-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .log-entry {
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.4;
+            animation: fadeSlideUp 0.3s ease;
+            display: flex;
+            gap: 8px;
+        }
+
+        .log-entry:hover {
+            background: var(--bg-elevated);
+        }
+
+        .log-ts {
+            color: var(--text-muted);
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .log-route {
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .log-msg {
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .log-entry.delegate {
+            background: var(--amber-dim);
+        }
+
+        .log-entry.delegate .log-msg {
+            color: var(--amber);
+        }
+
+        .log-entry.report .log-msg {
+            color: var(--green);
+        }
+
+        .log-entry.error-log .log-msg {
+            color: var(--red);
+        }
+
+        /* ════════════════ RIGHT COLUMN ════════════════ */
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Accomplishments */
+        .accom-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .accom-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+        }
+
+        .accom-item {
+            padding: 10px 12px;
+            border-radius: 4px;
+            border-left: 3px solid var(--green);
+            margin-bottom: 6px;
+            background: var(--bg-surface);
+            animation: fadeSlideUp 0.3s ease;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .accom-item:hover {
+            background: var(--bg-elevated);
+        }
+
+        .accom-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+
+        .accom-ts {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .accom-agent {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--accent);
+        }
+
+        .accom-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .accom-icon {
+            font-size: 12px;
+            margin-right: 6px;
+        }
+
+        .accom-detail {
+            padding: 8px 10px;
+            margin-top: 6px;
+            background: var(--bg-base);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            display: none;
+        }
+
+        .accom-item.expanded .accom-detail {
+            display: block;
+        }
+
+        /* Scheduler */
+        .sched-section {
+            height: 40%;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sched-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+        }
+
+        .sched-day-label {
+            font-family: var(--font-heading);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            padding: 8px 0 4px;
+        }
+
+        .sched-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+        }
+
+        .sched-item:hover {
+            background: var(--bg-elevated);
+        }
+
+        .sched-time {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            width: 48px;
+        }
+
+        .sched-desc {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sched-agent {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .sched-status {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .sched-status.pending {
+            background: var(--amber-dim);
+            color: var(--amber);
+        }
+
+        .sched-status.scheduled {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .sched-status.completed {
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .add-task-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--accent);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .add-task-btn:hover {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+        }
+
+        .add-task-form {
+            padding: 10px 12px;
+            border-top: 1px solid var(--border);
+            display: none;
+            flex-shrink: 0;
+        }
+
+        .add-task-form.open {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .add-task-form input,
+        .add-task-form select {
+            padding: 7px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        .add-task-form input:focus,
+        .add-task-form select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .add-task-form .form-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .add-task-form .form-row>* {
+            flex: 1;
+        }
+
+        .add-task-confirm {
+            padding: 7px 14px;
+            border-radius: 4px;
+            border: none;
+            background: var(--accent);
+            color: var(--bg-base);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* ── Mobile tabs ──────────────────────────────────────────────────────── */
+        .mobile-tabs {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .cc-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cc-panel {
+                display: none;
+                border-right: none;
+            }
+
+            .cc-panel.mobile-active {
+                display: flex;
+            }
+
+            .mobile-tabs {
+                display: flex;
+                gap: 0;
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+            }
+
+            .mob-tab {
+                flex: 1;
+                padding: 10px;
+                text-align: center;
+                font-family: var(--font-mono);
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: var(--text-muted);
+                cursor: pointer;
+                border-bottom: 2px solid transparent;
+                background: var(--bg-surface);
+            }
+
+            .mob-tab.active {
+                color: var(--accent);
+                border-bottom-color: var(--accent);
+            }
+        }
+
+        /* ── Animations ───────────────────────────────────────────────────────── */
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .4;
+            }
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(1);
+                opacity: .5;
+            }
+
+            100% {
+                transform: scale(1.15);
+                opacity: 0;
+            }
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── Scrollbars ───────────────────────────────────────────────────────── */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cc-shell">
+
+        <!-- ═══════════ HEADER ═══════════ -->
+        <header class="cc-header">
+            <div class="cc-header-left">
+                <a href="/agents.html" style="color:var(--text-muted);text-decoration:none;font-size:18px;"
+                    title="Back to Agent Pods">←</a>
+                <span class="pod-title" id="podTitle">Social Media Content Pod</span>
+                <span class="status-pill running" id="statusPill"><span class="dot"></span><span
+                        id="statusLabel">RUNNING</span></span>
+            </div>
+            <div class="cc-header-meta">
+                <div class="meta-item"><span>UPTIME</span><span class="uptime" id="uptime">00:00:00</span></div>
+                <div class="meta-item"><span>AGENTS</span><span class="meta-value" id="agentCount">0</span></div>
+                <div class="meta-item"><span>MCP</span><span class="meta-value" id="mcpCount">0</span></div>
+                <div class="meta-item"><span>TASKS</span><span class="meta-value" id="tasksDone">0</span></div>
+            </div>
+            <div class="cc-header-right">
+                <button class="hdr-btn" id="pauseBtn">⏸ PAUSE</button>
+                <button class="hdr-btn danger" onclick="location.href='/agents.html'">⏻ DISCONNECT</button>
+                <button class="hdr-btn" id="settingsBtn">⚙ SETTINGS</button>
+            </div>
+        </header>
+
+        <!-- ═══════════ MOBILE TABS ═══════════ -->
+        <div class="mobile-tabs" id="mobileTabs">
+            <div class="mob-tab active" data-tab="left">Agents</div>
+            <div class="mob-tab" data-tab="center">Command</div>
+            <div class="mob-tab" data-tab="right">Log</div>
+        </div>
+
+        <!-- ═══════════ 3-COL GRID ═══════════ -->
+        <div class="cc-grid">
+
+            <!-- ──── LEFT: AGENT ROSTER ──── -->
+            <div class="cc-panel mobile-active" id="panelLeft">
+                <div class="panel-header"><span class="panel-title">Agent Roster</span></div>
+                <div class="roster-list" id="rosterList"><!-- JS --></div>
+            </div>
+
+            <!-- ──── CENTER: COMMAND HUB ──── -->
+            <div class="cc-panel center-col" id="panelCenter">
+                <!-- Head Node -->
+                <div class="head-node-section">
+                    <div class="head-node-row">
+                        <div class="head-avatar" id="headAvatar">NEXUS</div>
+                        <div class="head-info">
+                            <div class="head-name" id="headName">NEXUS</div>
+                            <div class="head-role">Team Lead · Head Node</div>
+                            <div class="head-status" id="headStatus">● ONLINE — AWAITING ORDERS</div>
+                        </div>
+                    </div>
+                    <div class="chat-history" id="chatHistory">
+                        <div class="chat-msg head">
+                            <div class="msg-label">NEXUS</div>Pod initialized. All agents online and ready. Awaiting
+                            your directive.
+                        </div>
+                    </div>
+                    <div class="chat-input-row">
+                        <input type="text" id="chatInput" placeholder="Type a command for the Head Node...">
+                        <button class="chat-send" id="chatSend">SEND</button>
+                    </div>
+                </div>
+                <!-- Comms Log -->
+                <div class="comms-section">
+                    <div class="comms-header">
+                        <span class="panel-title">Live Communications</span>
+                        <div class="comms-filters" id="commsFilters"><!-- JS --></div>
+                    </div>
+                    <div class="comms-log" id="commsLog"><!-- JS --></div>
+                </div>
+            </div>
+
+            <!-- ──── RIGHT: ACCOMPLISHMENTS + SCHEDULER ──── -->
+            <div class="cc-panel right-col" id="panelRight">
+                <!-- Accomplishments -->
+                <div class="accom-section">
+                    <div class="panel-header"><span class="panel-title">Completed Tasks</span></div>
+                    <div class="accom-list" id="accomList"><!-- JS --></div>
+                </div>
+                <!-- Scheduler -->
+                <div class="sched-section">
+                    <div class="panel-header">
+                        <span class="panel-title">Schedule</span>
+                        <button class="add-task-btn" id="addTaskBtn">+ ADD TASK</button>
+                    </div>
+                    <div class="sched-list" id="schedList"><!-- JS --></div>
+                    <div class="add-task-form" id="addTaskForm">
+                        <div class="form-row">
+                            <input type="time" id="newTaskTime" value="14:00">
+                            <select id="newTaskAgent"><!-- JS --></select>
+                        </div>
+                        <input type="text" id="newTaskDesc" placeholder="Task description...">
+                        <button class="add-task-confirm" id="confirmTask">SCHEDULE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/command.js"></script>
+</body>
+
+</html>

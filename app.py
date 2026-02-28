@@ -520,6 +520,10 @@ async def serve_projects():
 async def serve_agents():
     return FileResponse("static/agents.html")
 
+@app.get("/command.html")
+async def serve_command():
+    return FileResponse("static/command.html")
+
 @app.get("/static/{file_path:path}")
 async def serve_static(file_path: str):
     return FileResponse(f"static/{file_path}")

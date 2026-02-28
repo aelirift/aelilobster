@@ -528,8 +528,10 @@ async function launchPod() {
     showToast(`🚀 ${drawerPod.name} is now running!`);
     closeDrawer();
 
-    // Update card inputs-info to green
-    render();
+    // Navigate to Command Center
+    setTimeout(() => {
+        location.href = `/command.html?pod=${encodeURIComponent(drawerPod.name)}`;
+    }, 800);
 }
 
 // ── Download ────────────────────────────────────────────────────────────────
