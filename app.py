@@ -81,8 +81,16 @@ async def get_config():
     return {
         "has_minimax_key": bool(cfg.get("minimax_api_key")),
         "has_openai_key": bool(cfg.get("openai_api_key")),
-        "default_model": cfg.get("default_model", "MiniMax-M2.5")
+        "default_model": cfg.get("default_model", "MiniMax-M2.5"),
+        "default_user": cfg.get("default_user", "default")
     }
+
+
+@app.get("/api/user")
+async def get_current_user():
+    """Get current user from config."""
+    cfg = load_config()
+    return {"user": cfg.get("default_user", "default")}
 
 
 @app.post("/config")
@@ -729,8 +737,10 @@ class ProjectRequest(BaseModel):
 
 
 @app.get("/api/projects")
-async def get_projects():
-    """Get all projects."""
+async def get_projects(user: str = None):
+    """Get all projects, optionally filtered by user."""
+    if user:
+        return projects_service.get_user_projects(user)
     return projects_service.load_projects()
 
 

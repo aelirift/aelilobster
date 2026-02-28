@@ -9,7 +9,11 @@ const noProjectSelected = document.getElementById('noProjectSelected');
 const contextSettingsContainer = document.getElementById('contextSettingsContainer');
 const settingsProjectName = document.getElementById('settingsProjectName');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-const dynamicContentContainer = document.getElementById('dynamicContentContainer');
+
+// Get dynamic content container when needed (not at load time to avoid null references)
+function getDynamicContentContainer() {
+    return document.getElementById('dynamicContentContainer');
+}
 
 const CURRENT_USER = 'test_user';
 let editingProjectId = null;
@@ -21,7 +25,21 @@ let allProjects = [];
 // Load projects from server on page load
 async function loadProjects() {
     try {
-        const response = await fetch('/api/projects');
+        // Get current user
+        let currentUser = localStorage.getItem('currentUser');
+        if (!currentUser) {
+            try {
+                const userResponse = await fetch('/api/user');
+                const userData = await userResponse.json();
+                currentUser = userData.user || 'default';
+                localStorage.setItem('currentUser', currentUser);
+            } catch (e) {
+                currentUser = 'default';
+            }
+        }
+        
+        // Fetch projects filtered by user
+        const response = await fetch(`/api/projects?user=${encodeURIComponent(currentUser)}`);
         if (!response.ok) throw new Error('Failed to load projects');
         
         const projects = await response.json();
@@ -64,8 +82,8 @@ function selectProject(projectId) {
     const project = allProjects.find(p => p.id === projectId);
     if (!project) return;
     
-    // Show project settings
-    showProjectSettings(projectId, project.name);
+    // Show project context files
+    showProjectContextFiles(projectId, project.name);
     
     // Update header selector if exists
     const projectSelect = document.getElementById('headerProject');
@@ -100,7 +118,10 @@ function renderProjects(projects) {
                     <span class="project-user">${escapeHtml(project.user)}</span>
                 </div>
                 <div class="project-actions">
-                    <button class="project-action-btn settings-btn" onclick="event.stopPropagation(); showProjectSettings('${project.id}', '${escapeHtml(project.name)}')" title="Settings">
+                    <button class="project-action-btn open-btn" onclick="event.stopPropagation(); openProjectInChat('${project.id}')" title="Open in Chat">
+                        🚀
+                    </button>
+                    <button class="project-action-btn settings-btn" onclick="event.stopPropagation(); showProjectContextFiles('${project.id}', '${escapeHtml(project.name)}')" title="Context Files">
                         ⚙️
                     </button>
                     <button class="project-action-btn pods-btn" onclick="event.stopPropagation(); showProjectPodsPanel('${project.id}')" title="Pods">
@@ -245,11 +266,19 @@ async function loadContextData() {
     }
 }
 
-// Show project settings panel
-async function showProjectSettings(projectId, projectName) {
+// Open project in chat page with project-specific history
+function openProjectInChat(projectId) {
+    // Save selected project to localStorage
+    localStorage.setItem('selectedProject', projectId);
+    // Navigate to chat page (app serves index at "/")
+    window.location.href = '/';
+}
+
+// Show project context files panel
+async function showProjectContextFiles(projectId, projectName) {
     editingProjectId = projectId;
     settingsProjectName.value = projectName;
-    projectSettingsPanel.style.display = 'block';
+    projectSettingsPanel.style.display = 'flex';
     noProjectSelected.style.display = 'none';
     
     // Load project context settings or defaults
@@ -264,7 +293,8 @@ async function showProjectSettings(projectId, projectName) {
     renderContextSettings();
     
     // Clear dynamic content
-    dynamicContentContainer.innerHTML = '';
+    const dc = getDynamicContentContainer();
+    if (dc) dc.innerHTML = '';
 }
 
 // Render context file dropdowns
@@ -630,14 +660,14 @@ async function showProjectPodsPanel(projectId) {
     projectSettingsPanel.style.display = 'flex';
     noProjectSelected.style.display = 'none';
     
-    dynamicContentContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading pods...</p>';
+    getDynamicContentContainer().innerHTML = '<p style="color: var(--text-secondary);">Loading pods...</p>';
     
     try {
         const response = await fetch(`/api/projects/${projectId}/pods`);
         const data = await response.json();
         
         if (!data.pods || data.pods.length === 0) {
-            dynamicContentContainer.innerHTML = `
+            getDynamicContentContainer().innerHTML = `
                 <h4>Pods</h4>
                 <p style="color: var(--text-secondary);">No pods found for this project.</p>
                 <button class="save-button" onclick="startProjectPodByNameFromPanel('${projectId}')" style="width: 100%;">Start Pod</button>
@@ -645,7 +675,7 @@ async function showProjectPodsPanel(projectId) {
             return;
         }
         
-        dynamicContentContainer.innerHTML = '<h4>Pods</h4>' + data.pods.map(pod => `
+        getDynamicContentContainer().innerHTML = '<h4>Pods</h4>' + data.pods.map(pod => `
             <div style="padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
@@ -677,7 +707,7 @@ async function showProjectPodsPanel(projectId) {
         `).join('');
         
     } catch (error) {
-        dynamicContentContainer.innerHTML = '<p style="color: red;">Failed to load pods: ' + error.message + '</p>';
+        getDynamicContentContainer().innerHTML = '<p style="color: red;">Failed to load pods: ' + error.message + '</p>';
     }
 }
 
@@ -687,7 +717,7 @@ async function showProjectContextFiles(projectId) {
     projectSettingsPanel.style.display = 'block';
     noProjectSelected.style.display = 'none';
     
-    dynamicContentContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading context files...</p>';
+    getDynamicContentContainer().innerHTML = '<p style="color: var(--text-secondary);">Loading context files...</p>';
     
     try {
         const response = await fetch(`/api/projects/${projectId}/context-settings`);
@@ -712,7 +742,7 @@ async function showProjectContextFiles(projectId) {
             html += '<button class="save-button" onclick="saveDynamicContextSettings()" style="width: 100%;">Save Context Settings</button>';
         }
         
-        dynamicContentContainer.innerHTML = html;
+        getDynamicContentContainer().innerHTML = html;
         
         // Load available context files and populate dropdowns
         const contextResponse = await fetch('/api/context-files');
@@ -736,7 +766,7 @@ async function showProjectContextFiles(projectId) {
         });
         
     } catch (error) {
-        dynamicContentContainer.innerHTML = '<p style="color: red;">Failed to load context files: ' + error.message + '</p>';
+        getDynamicContentContainer().innerHTML = '<p style="color: red;">Failed to load context files: ' + error.message + '</p>';
     }
 }
 
@@ -761,19 +791,19 @@ async function saveDynamicContextSettings() {
         });
         
         if (response.ok) {
-            dynamicContentContainer.innerHTML = '<p style="color: green;">Settings saved!</p>';
+            getDynamicContentContainer().innerHTML = '<p style="color: green;">Settings saved!</p>';
             setTimeout(() => showProjectContextFiles(editingProjectId), 1000);
         } else {
-            dynamicContentContainer.innerHTML = '<p style="color: red;">Failed to save settings</p>';
+            getDynamicContentContainer().innerHTML = '<p style="color: red;">Failed to save settings</p>';
         }
     } catch (error) {
-        dynamicContentContainer.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+        getDynamicContentContainer().innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
     }
 }
 
 // Start pod from panel
 async function startProjectPodByNameFromPanel(projectId) {
-    dynamicContentContainer.innerHTML = '<p style="color: var(--text-secondary);">Starting pod...</p>';
+    getDynamicContentContainer().innerHTML = '<p style="color: var(--text-secondary);">Starting pod...</p>';
     
     try {
         const response = await fetch(`/api/projects/${projectId}/pods/start`, { method: 'POST' });
@@ -783,10 +813,10 @@ async function startProjectPodByNameFromPanel(projectId) {
             // Refresh pods panel immediately
             showProjectPodsPanel(projectId);
         } else {
-            dynamicContentContainer.innerHTML = '<p style="color: red;">' + data.message + '</p>';
+            getDynamicContentContainer().innerHTML = '<p style="color: red;">' + data.message + '</p>';
         }
     } catch (error) {
-        dynamicContentContainer.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+        getDynamicContentContainer().innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
     }
 }
 
@@ -801,7 +831,7 @@ async function showProjectSecretsPanel(projectId, projectName) {
     noProjectSelected.style.display = 'none';
     
     // Show secrets in dynamic content container
-    dynamicContentContainer.innerHTML = `
+    getDynamicContentContainer().innerHTML = `
         <div style="padding: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                 <h3 style="margin: 0;">Secrets - ${escapeHtml(projectName)}</h3>
