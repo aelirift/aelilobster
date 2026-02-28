@@ -106,6 +106,9 @@ function renderProjects(projects) {
                     <button class="project-action-btn pods-btn" onclick="showProjectPodsPanel('${project.id}')" title="Pods">
                         📦
                     </button>
+                    <button class="project-action-btn secrets-btn" onclick="showProjectSecretsPanel('${project.id}', '${escapeHtml(project.name)}')" title="Secrets">
+                        🔐
+                    </button>
                     <button class="project-action-btn delete-btn" onclick="deleteProject('${project.id}')" title="Delete">
                         🗑️
                     </button>
@@ -259,9 +262,6 @@ async function showProjectSettings(projectId, projectName) {
     
     // Render context file dropdowns
     renderContextSettings();
-    
-    // Load secrets list
-    loadProjectSecrets(projectId);
     
     // Clear dynamic content
     dynamicContentContainer.innerHTML = '';
@@ -794,7 +794,221 @@ async function startProjectPodByNameFromPanel(projectId) {
 // Project Secrets Functions
 // =============================================================================
 
-// Load and display secrets for current project
+// Show secrets panel in dynamic content container
+async function showProjectSecretsPanel(projectId, projectName) {
+    editingProjectId = projectId;
+    projectSettingsPanel.style.display = 'block';
+    noProjectSelected.style.display = 'none';
+    
+    // Show secrets in dynamic content container
+    dynamicContentContainer.innerHTML = `
+        <div style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">Secrets - ${escapeHtml(projectName)}</h3>
+                <button class="btn-small" onclick="showAddSecretForm()" style="background: #28a745;">+ Add Secret</button>
+            </div>
+            <div id="secretsListInPanel">
+                <!-- Secrets will be loaded here -->
+            </div>
+        </div>
+    `;
+    
+    // Load secrets into the panel
+    await loadSecretsForPanel(projectId);
+}
+
+// Load secrets into the panel container
+async function loadSecretsForPanel(projectId) {
+    const container = document.getElementById('secretsListInPanel');
+    if (!container) return;
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/secrets`);
+        const data = await response.json();
+        
+        if (data.success && data.secrets && data.secrets.length > 0) {
+            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            data.secrets.forEach(secret => {
+                const tagsHtml = secret.tags && secret.tags.length > 0 
+                    ? secret.tags.map(t => `<span style="background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">${escapeHtml(t)}</span>`).join('')
+                    : '';
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                        <div>
+                            <strong>${escapeHtml(secret.name)}</strong>
+                            ${tagsHtml}
+                        </div>
+                        <div>
+                            <button class="btn-small" onclick="editSecretFromPanel('${secret.id}')" style="background: #ffc107; color: #000; margin-right: 4px;">Edit</button>
+                            <button class="btn-small" onclick="deleteSecretFromPanel('${secret.id}')" style="background: #dc3545;">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p style="color: var(--text-secondary);">No secrets yet. Click "Add Secret" to create one.</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p style="color: red;">Error loading secrets: ' + error.message + '</p>';
+    }
+}
+
+// Show add secret form in panel
+function showAddSecretForm() {
+    const container = document.getElementById('secretsListInPanel');
+    container.innerHTML = `
+        <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px;">
+            <h4 style="margin: 0 0 12px 0;">Add New Secret</h4>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="secretNamePanel" placeholder="e.g., SSH_KEY, API_TOKEN">
+            </div>
+            <div class="form-group">
+                <label>Value</label>
+                <input type="password" id="secretValuePanel" placeholder="Secret value (will be encrypted)">
+            </div>
+            <div class="form-group">
+                <label>Tags (comma-separated)</label>
+                <input type="text" id="secretTagsPanel" placeholder="e.g., ssh, production, server1">
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="save-button" onclick="saveSecretFromPanel()">Create</button>
+                <button class="btn-small" onclick="loadSecretsForPanel(editingProjectId)" style="background: #6c757d;">Cancel</button>
+            </div>
+        </div>
+    `;
+}
+
+// Save secret from panel
+async function saveSecretFromPanel() {
+    const name = document.getElementById('secretNamePanel').value.trim();
+    const value = document.getElementById('secretValuePanel').value;
+    const tagsStr = document.getElementById('secretTagsPanel').value.trim();
+    const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+    
+    if (!name || !value) {
+        alert('Secret name and value are required');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/secrets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, value, tags })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadSecretsForPanel(editingProjectId);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to save secret'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Edit secret from panel
+async function editSecretFromPanel(secretId) {
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/secrets`);
+        const data = await response.json();
+        
+        if (data.success && data.secrets) {
+            const secret = data.secrets.find(s => s.id === secretId);
+            if (secret) {
+                const container = document.getElementById('secretsListInPanel');
+                container.innerHTML = `
+                    <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px;">
+                        <h4 style="margin: 0 0 12px 0;">Edit Secret</h4>
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="secretNamePanel" value="${escapeHtml(secret.name)}">
+                        </div>
+                        <div class="form-group">
+                            <label>New Value (leave empty to keep current)</label>
+                            <input type="password" id="secretValuePanel" placeholder="New secret value">
+                        </div>
+                        <div class="form-group">
+                            <label>Tags (comma-separated)</label>
+                            <input type="text" id="secretTagsPanel" value="${escapeHtml(secret.tags.join(', '))}">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="save-button" onclick="updateSecretFromPanel('${secretId}')">Update</button>
+                            <button class="btn-small" onclick="loadSecretsForPanel(editingProjectId)" style="background: #6c757d;">Cancel</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        alert('Error loading secret: ' + error.message);
+    }
+}
+
+// Update secret from panel
+async function updateSecretFromPanel(secretId) {
+    const name = document.getElementById('secretNamePanel').value.trim();
+    const value = document.getElementById('secretValuePanel').value;
+    const tagsStr = document.getElementById('secretTagsPanel').value.trim();
+    const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+    
+    if (!name) {
+        alert('Secret name is required');
+        return;
+    }
+    
+    try {
+        const updateData = { name };
+        if (value) updateData.value = value;
+        if (tags.length > 0) updateData.tags = tags;
+        
+        const response = await fetch(`/api/projects/${editingProjectId}/secrets/${secretId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadSecretsForPanel(editingProjectId);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to update secret'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Delete secret from panel
+async function deleteSecretFromPanel(secretId) {
+    if (!confirm('Are you sure you want to delete this secret? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/secrets/${secretId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadSecretsForPanel(editingProjectId);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete secret'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Load and display secrets for current project (for settings panel)
 async function loadProjectSecrets(projectId) {
     const container = document.getElementById('secretsListContainer');
     if (!container) return;

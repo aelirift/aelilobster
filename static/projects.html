@@ -68,33 +68,29 @@
 
                 <!-- Right: Project Settings -->
                 <div class="projects-right">
-                    <div id="projectSettingsPanel" style="display: none;">
-                        <h3>Project Settings</h3>
-                        <div class="project-settings">
-                            <div class="form-group">
+                    <div id="projectSettingsPanel" style="display: none; height: 100%; display: flex; flex-direction: column;">
+                        <!-- Fixed Header -->
+                        <div class="project-settings-header" style="flex-shrink: 0; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+                            <h3 style="margin: 0 0 12px 0;">Project Settings</h3>
+                            <div class="form-group" style="margin-bottom: 12px;">
                                 <label>Project Name</label>
                                 <input type="text" id="settingsProjectName" readonly>
-                            </div>
-                            <div id="contextSettingsContainer">
-                                <!-- Context file dropdowns will be rendered here -->
                             </div>
                             <button class="save-button" id="saveSettingsBtn">Save Settings</button>
                         </div>
                         
-                        <!-- Secrets Section -->
-                        <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <h4 style="margin: 0;">Secrets</h4>
-                                <button class="btn-small" id="showSecretsBtn" style="background: #28a745;">+ Add Secret</button>
+                        <!-- Scrollable Content -->
+                        <div class="project-settings-content" style="flex: 1; overflow-y: auto; padding-top: 16px;">
+                            <div class="project-settings">
+                                <div id="contextSettingsContainer">
+                                    <!-- Context file dropdowns will be rendered here -->
+                                </div>
                             </div>
-                            <div id="secretsListContainer">
-                                <!-- Secrets list will be rendered here -->
+                            
+                            <!-- Dynamic Content Container (Pods, Context Files, or Secrets) -->
+                            <div id="dynamicContentContainer" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+                                <!-- Dynamic content will be rendered here -->
                             </div>
-                        </div>
-                        
-                        <!-- Dynamic Content Container (Pods or Context Files) -->
-                        <div id="dynamicContentContainer" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
-                            <!-- Dynamic content will be rendered here -->
                         </div>
                     </div>
                     <div id="noProjectSelected" style="padding: 40px; text-align: center; color: var(--text-secondary);">

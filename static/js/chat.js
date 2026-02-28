@@ -68,6 +68,7 @@ function setPasswordInputMode(enabled) {
 // Load saved mode from localStorage
 function loadSavedMode() {
     const savedMode = localStorage.getItem('chatMode');
+    console.log('[DEBUG] loadSavedMode: savedMode =', savedMode);
     if (savedMode === 'terminal') {
         chatMode = false;
         terminalMode = true;
@@ -75,6 +76,7 @@ function loadSavedMode() {
         chatMode = true;
         terminalMode = false;
     }
+    console.log('[DEBUG] loadSavedMode: chatMode =', chatMode, 'terminalMode =', terminalMode);
 }
 
 // Save mode to localStorage
@@ -84,6 +86,7 @@ function saveMode() {
     } else {
         localStorage.setItem('chatMode', 'chat');
     }
+    console.log('[DEBUG] saveMode: chatMode =', chatMode, 'terminalMode =', terminalMode);
 }
 
 // Strip ANSI color codes from terminal output
@@ -702,6 +705,35 @@ async function loadProjects() {
             option.textContent = `${project.name} (${project.user})`;
             projectSelect.appendChild(option);
         });
+        
+        // If no projects exist or none selected, auto-create one
+        const savedProject = localStorage.getItem('selectedProject');
+        if (!savedProject || !projects.find(p => p.id === savedProject)) {
+            if (projects.length > 0) {
+                // Use first available project
+                projectSelect.value = projects[0].id;
+                localStorage.setItem('selectedProject', projects[0].id);
+            } else {
+                // Create a random project
+                console.log('[DEBUG] No projects found, creating one...');
+                const randomName = 'project-' + Math.random().toString(36).substring(2, 8);
+                try {
+                    const createResponse = await fetch('/api/projects', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: randomName })
+                    });
+                    const newProject = await createResponse.json();
+                    if (newProject.id) {
+                        projectSelect.value = newProject.id;
+                        localStorage.setItem('selectedProject', newProject.id);
+                        console.log('[DEBUG] Created project:', newProject.id);
+                    }
+                } catch (e) {
+                    console.error('Failed to create project:', e);
+                }
+            }
+        }
         
         return projects;
     } catch (e) {

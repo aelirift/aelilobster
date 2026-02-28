@@ -2968,5 +2968,20 @@
     },
     "time": "21:28:19.781",
     "timestamp": "2026-02-28T21:28:19.781722"
+  },
+  {
+    "trace_id": "20260228_181738_754725",
+    "type": "terminal_close",
+    "label": "Session Closed",
+    "data": {
+      "session_id": "eab8441e-af99-4df0-a371-4ff641cc88e4",
+      "result": {
+        "success": true,
+        "message": "Terminal session closed",
+        "session_id": "eab8441e-af99-4df0-a371-4ff641cc88e4"
+      }
+    },
+    "time": "21:29:43.781",
+    "timestamp": "2026-02-28T21:29:43.781109"
   }
 ]
