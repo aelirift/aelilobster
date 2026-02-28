@@ -627,7 +627,7 @@ async function killGlobalPod(projectId) {
 // Show pods panel in dynamic content container
 async function showProjectPodsPanel(projectId) {
     editingProjectId = projectId;
-    projectSettingsPanel.style.display = 'block';
+    projectSettingsPanel.style.display = 'flex';
     noProjectSelected.style.display = 'none';
     
     dynamicContentContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading pods...</p>';
@@ -797,7 +797,7 @@ async function startProjectPodByNameFromPanel(projectId) {
 // Show secrets panel in dynamic content container
 async function showProjectSecretsPanel(projectId, projectName) {
     editingProjectId = projectId;
-    projectSettingsPanel.style.display = 'block';
+    projectSettingsPanel.style.display = 'flex';
     noProjectSelected.style.display = 'none';
     
     // Show secrets in dynamic content container
