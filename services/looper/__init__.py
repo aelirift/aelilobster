@@ -149,7 +149,24 @@ async def _process_command_node(
     
     # Get pod settings and determine container name
     settings = get_pod_settings()
-    container_name = executor.get_pod_name(user_name, project_name, node.id[:8])
+    # Use standardized pod name without suffix (no node.id)
+    container_name = executor.get_pod_name(user_name, project_name)
+    
+    # Import and ensure pod is ready before executing
+    from services.pre_llm import ensure_pod_ready
+    pod_status = ensure_pod_ready(user_name, project_name, project_path, auto_start=True)
+    
+    log_trace('process', 'Pod Status', {
+        'pod_name': pod_status.get('pod_name'),
+        'ready': pod_status.get('ready'),
+        'running': pod_status.get('running'),
+        'action': pod_status.get('action'),
+        'message': pod_status.get('message')
+    }, looper_state.trace_callback)
+    
+    if not pod_status.get('ready', False):
+        node.error = f"Pod not ready: {pod_status.get('message', 'Unknown error')}"
+        return node
     
     # Execute the code in pod
     log_trace('process', 'Starting Pod', {

@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from services.naming import get_pod_name as get_pod_name_normalized
+from services.naming import get_pod_name_normalized
 
 
 # Default pod settings
@@ -285,7 +285,7 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
     
     # Create container name based on user/project or generate unique
     if user_name and project_name:
-        container_name = get_pod_name(user_name, project_name)
+        container_name = get_pod_name_normalized(user_name, project_name)
     else:
         container_name = f"test-pod-{uuid.uuid4().hex[:8]}"
     

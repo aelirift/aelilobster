@@ -8,6 +8,7 @@ import shutil
 
 from services.config import PROJECTS_DIR, parse_project_id
 from services.naming import get_project_dir, normalize_for_pod
+from services.pre_llm import start_pod, get_pod_settings
 
 
 def load_projects() -> List[Dict[str, Any]]:
@@ -37,14 +38,14 @@ def load_projects() -> List[Dict[str, Any]]:
 
 def create_project_folder(user: str, name: str) -> Dict[str, Any]:
     """
-    Create a new project folder.
+    Create a new project folder and its pod.
     
     Args:
         user: The username
         name: The project name
     
     Returns:
-        Dict with id, name, user, and path
+        Dict with id, name, user, path, and pod_status
     
     Raises:
         ValueError: If project already exists
@@ -57,11 +58,21 @@ def create_project_folder(user: str, name: str) -> Dict[str, Any]:
     
     project_dir.mkdir(parents=True, exist_ok=True)
     
+    # Create a default requirements file if it doesn't exist
+    requirements_file = project_dir / "requirements.txt"
+    if not requirements_file.exists():
+        requirements_file.write_text("# Add your Python dependencies here\n# One package per line, e.g.:\n# requests\n# numpy\n")
+    
+    # Create pod for this project
+    project_path = str(project_dir)
+    pod_result = start_pod(user, name, project_path)
+    
     return {
         "id": f"{user}_{name}",
         "name": name,
         "user": user,
-        "path": str(project_dir)
+        "path": str(project_dir),
+        "pod_status": pod_result
     }
 
 

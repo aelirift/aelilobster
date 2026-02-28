@@ -1,6 +1,6 @@
 {
   "pre-llm": "default_pre-llm",
-  "debugger": "default_debug",
+  "debugger": "default",
   "pre-code": "test",
   "pod": "default_pod",
   "names": "naming"

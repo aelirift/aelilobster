@@ -173,6 +173,53 @@ async def chat_completions(request: ChatRequest):
     
     return result
 
+
+# =============================================================================
+# Simple Chat Endpoint (No Code Execution)
+# =============================================================================
+
+class SimpleChatRequest(BaseModel):
+    prompt: str
+    model: str = "MiniMax-M2.5"
+    messages: List[Dict[str, str]] = []
+
+
+@app.post("/api/chat")
+async def simple_chat(request: SimpleChatRequest):
+    """
+    Simple chat endpoint - just LLM conversation, no code execution.
+    Use this for chat mode, use terminal for command execution.
+    """
+    # Get API key
+    if "minimax" in request.model.lower():
+        api_key = get_api_key("minimax")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="MiniMax API key not configured")
+    else:
+        api_key = get_api_key("openai")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="OpenAI API key not configured")
+    
+    # Build messages
+    messages = request.messages + [{"role": "user", "content": request.prompt}]
+    
+    # Call LLM
+    result = await llm_providers.call_llm(
+        request.model,
+        messages,
+        0.7,
+        4096,
+        api_key
+    )
+    
+    llm_output = result["choices"][0]["message"]["content"]
+    
+    return {
+        "type": "chat",
+        "output": llm_output,
+        "model": request.model
+    }
+
 # =============================================================================
 # Process Prompt Endpoint
 # =============================================================================
@@ -673,6 +720,31 @@ async def kill_project_pod(project_id: str):
     result = pre_llm.kill_project_pod(user_name, project_name)
     return result
 
+
+@app.post("/api/projects/{project_id}/pods/remove")
+async def remove_project_pod(project_id: str):
+    """Remove (delete) a pod for the project."""
+    user_name, project_name = parse_project_id(project_id)
+    if not user_name or not project_name:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
+    
+    result = pre_llm.remove_project_pod(user_name, project_name)
+    return result
+
+
+@app.post("/api/projects/{project_id}/pods/reset")
+async def reset_project_pod(project_id: str):
+    """Reset a pod for the project - remove and recreate with fresh requirements."""
+    user_name, project_name = parse_project_id(project_id)
+    if not user_name or not project_name:
+        raise HTTPException(status_code=400, detail="Invalid project ID")
+    
+    # Get project path
+    project_path = str(PROJECTS_DIR / user_name / project_name)
+    
+    result = pre_llm.reset_project_pod(user_name, project_name, project_path)
+    return result
+
 # =============================================================================
 # Pod Management Endpoints
 # =============================================================================
@@ -701,6 +773,162 @@ class KillPodRequest(BaseModel):
 async def kill_pod_endpoint(request: KillPodRequest):
     """Kill a pod by user and project name."""
     result = pod_manager.kill_pod(request.user_name, request.project_name)
+    return result
+
+
+# =============================================================================
+# Pod Name-based Endpoints (for UI buttons)
+# =============================================================================
+
+@app.post("/api/pods/{pod_name}/start")
+async def start_pod_by_name(pod_name: str):
+    """Start a pod by its name."""
+    # Parse pod name to get user/project info
+    # Format: {user}-{project}-pod
+    if pod_name.endswith('-pod'):
+        base_name = pod_name[:-4]  # Remove '-pod' suffix
+        parts = base_name.rsplit('-', 1)
+        if len(parts) == 2:
+            user_name, project_name = parts
+            result = pre_llm.start_pod(user_name, project_name)
+            return result
+    
+    return {"success": False, "message": "Invalid pod name format"}
+
+
+@app.post("/api/pods/{pod_name}/kill")
+async def kill_pod_by_name(pod_name: str):
+    """Kill a pod by its name."""
+    # Parse pod name to get user/project info
+    # Format: {user}-{project}-pod
+    if pod_name.endswith('-pod'):
+        base_name = pod_name[:-4]  # Remove '-pod' suffix
+        parts = base_name.rsplit('-', 1)
+        if len(parts) == 2:
+            user_name, project_name = parts
+            result = pre_llm.kill_project_pod(user_name, project_name)
+            return result
+    
+    return {"success": False, "message": "Invalid pod name format"}
+
+
+@app.post("/api/pods/{pod_name}/remove")
+async def remove_pod_by_name(pod_name: str):
+    """Remove a pod by its name."""
+    # Parse pod name to get user/project info
+    # Format: {user}-{project}-pod
+    if pod_name.endswith('-pod'):
+        base_name = pod_name[:-4]  # Remove '-pod' suffix
+        parts = base_name.rsplit('-', 1)
+        if len(parts) == 2:
+            user_name, project_name = parts
+            result = pre_llm.remove_project_pod(user_name, project_name)
+            return result
+    
+    return {"success": False, "message": "Invalid pod name format"}
+
+
+@app.post("/api/pods/{pod_name}/reset")
+async def reset_pod_by_name(pod_name: str):
+    """Reset a pod by its name - remove and recreate with fresh requirements."""
+    # Parse pod name to get user/project info
+    # Format: {user}-{project}-pod
+    if pod_name.endswith('-pod'):
+        base_name = pod_name[:-4]  # Remove '-pod' suffix
+        parts = base_name.rsplit('-', 1)
+        if len(parts) == 2:
+            user_name, project_name = parts
+            # Get project path
+            project_path = str(PROJECTS_DIR / user_name / project_name)
+            result = pre_llm.reset_project_pod(user_name, project_name, project_path)
+            return result
+    
+    return {"success": False, "message": "Invalid pod name format"}
+
+
+# =============================================================================
+# Terminal Endpoints (Interactive Command Mode)
+# =============================================================================
+import uuid
+from services import terminal as terminal_service
+
+
+class TerminalStartRequest(BaseModel):
+    cwd: Optional[str] = "/home/aeli/projects/aelilobster"
+
+
+class TerminalCommandRequest(BaseModel):
+    command: str
+
+
+class TerminalInputRequest(BaseModel):
+    input: str
+
+
+@app.post("/api/terminal/start")
+async def start_terminal(request: TerminalStartRequest):
+    """Start an interactive terminal session."""
+    session_id = str(uuid.uuid4())
+    session = terminal_service.create_session(session_id, request.cwd or "/home/aeli/projects/aelilobster")
+    result = session.start()
+    return result
+
+
+@app.get("/api/terminal/sessions")
+async def list_terminal_sessions():
+    """List all active terminal sessions."""
+    return terminal_service.list_sessions()
+
+
+@app.post("/api/terminal/{session_id}/exec")
+async def terminal_exec(session_id: str, request: TerminalCommandRequest):
+    """Execute a command in an existing terminal session."""
+    # Log to trace
+    trace_logger.add(
+        "terminal_command",
+        f"Command: {request.command[:50]}",
+        {"session_id": session_id, "command": request.command}
+    )
+    
+    result = terminal_service.execute_in_terminal(session_id, request.command)
+    
+    # Log result to trace
+    trace_logger.add(
+        "terminal_result",
+        f"Exit: {result.get('exit_code', -1)}",
+        {"session_id": session_id, "success": result.get("success", False)}
+    )
+    
+    return result
+
+
+@app.post("/api/terminal/{session_id}/input")
+async def terminal_input(session_id: str, request: TerminalInputRequest):
+    """Send interactive input to a terminal session."""
+    # Log to trace
+    trace_logger.add(
+        "terminal_input",
+        "User Input",
+        {"session_id": session_id, "input": request.input}
+    )
+    
+    result = terminal_service.send_terminal_input(session_id, request.input)
+    
+    return result
+
+
+@app.post("/api/terminal/{session_id}/close")
+async def close_terminal(session_id: str):
+    """Close a terminal session."""
+    result = terminal_service.close_terminal_session(session_id)
+    
+    # Log to trace
+    trace_logger.add(
+        "terminal_close",
+        "Session Closed",
+        {"session_id": session_id, "result": result}
+    )
+    
     return result
 
 # =============================================================================

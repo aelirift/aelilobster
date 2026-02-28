@@ -9,6 +9,7 @@ const noProjectSelected = document.getElementById('noProjectSelected');
 const contextSettingsContainer = document.getElementById('contextSettingsContainer');
 const settingsProjectName = document.getElementById('settingsProjectName');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const dynamicContentContainer = document.getElementById('dynamicContentContainer');
 
 const CURRENT_USER = 'test_user';
 let editingProjectId = null;
@@ -41,25 +42,9 @@ async function loadProjects() {
     }
 }
 
-// Populate project selector dropdown
+// Populate project selector dropdown (deprecated - kept for compatibility)
 function populateProjectSelector(projects) {
-    const projectSelect = document.getElementById('headerProject');
-    if (!projectSelect) return;
-    
-    projectSelect.innerHTML = '<option value="">Select Project</option>';
-    
-    projects.forEach(project => {
-        const option = document.createElement('option');
-        option.value = project.id;
-        option.textContent = `${project.name} (${project.user})`;
-        projectSelect.appendChild(option);
-    });
-    
-    // Load saved project from localStorage
-    const savedProject = localStorage.getItem('selectedProject');
-    if (savedProject) {
-        projectSelect.value = savedProject;
-    }
+    // No longer used - projects shown directly in list
 }
 
 // Handle project selector change
@@ -115,14 +100,11 @@ function renderProjects(projects) {
                     <span class="project-user">${escapeHtml(project.user)}</span>
                 </div>
                 <div class="project-actions" onclick="event.stopPropagation();">
-                    <button class="project-action-btn use-btn" onclick="openProject('${project.id}')" title="Open project">
-                        Open
-                    </button>
                     <button class="project-action-btn settings-btn" onclick="showProjectSettings('${project.id}', '${escapeHtml(project.name)}')" title="Settings">
                         ⚙️
                     </button>
-                    <button class="project-action-btn run-btn" onclick="runInPod('${project.id}')" title="Run in Pod">
-                        Run
+                    <button class="project-action-btn pods-btn" onclick="showProjectPodsPanel('${project.id}')" title="Pods">
+                        📦
                     </button>
                     <button class="project-action-btn delete-btn" onclick="deleteProject('${project.id}')" title="Delete">
                         🗑️
@@ -275,7 +257,11 @@ async function showProjectSettings(projectId, projectName) {
         currentProjectSettings = {};
     }
     
+    // Render context file dropdowns
     renderContextSettings();
+    
+    // Clear dynamic content
+    dynamicContentContainer.innerHTML = '';
 }
 
 // Render context file dropdowns
@@ -371,10 +357,24 @@ async function showProjectPods() {
                             ${escapeHtml(pod.status)}
                         </span>
                     </div>
-                    <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #dc3545;" 
-                        onclick="killProjectPod('${escapeHtml(pod.name)}')">
-                        Stop
-                    </button>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #28a745;" 
+                            onclick="startProjectPodByName('${escapeHtml(pod.name)}')">
+                            Start
+                        </button>
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #dc3545;" 
+                            onclick="killProjectPodByName('${escapeHtml(pod.name)}')">
+                            Stop
+                        </button>
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #fd7e14;" 
+                            onclick="resetProjectPodByName('${escapeHtml(pod.name)}')">
+                            Reset
+                        </button>
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #6c757d;" 
+                            onclick="removeProjectPodByName('${escapeHtml(pod.name)}')">
+                            Remove
+                        </button>
+                    </div>
                 </div>
             </div>
         `).join('');
@@ -408,7 +408,7 @@ async function startProjectPod() {
     }
 }
 
-// Kill a pod
+// Kill a pod (using project id)
 async function killProjectPod(podName) {
     if (!editingProjectId || !confirm('Stop this pod?')) return;
     
@@ -425,6 +425,107 @@ async function killProjectPod(podName) {
         }
     } catch (error) {
         alert('Failed to stop pod: ' + error.message);
+    }
+}
+
+// Kill a pod by name
+async function killProjectPodByName(podName) {
+    if (!confirm('Stop pod ' + podName + '?')) return;
+    
+    try {
+        const response = await fetch(`/api/pods/${encodeURIComponent(podName)}/kill`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            // Refresh pods panel if it's showing
+            if (editingProjectId) {
+                showProjectPodsPanel(editingProjectId);
+            }
+        } else {
+            alert('Failed to stop pod: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to stop pod: ' + error.message);
+    }
+}
+
+// Remove (delete) a pod by name
+async function removeProjectPodByName(podName) {
+    if (!confirm('Remove pod ' + podName + ' permanently?')) return;
+    
+    try {
+        const response = await fetch(`/api/pods/${encodeURIComponent(podName)}/remove`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            // Refresh pods panel if it's showing
+            if (editingProjectId) {
+                showProjectPodsPanel(editingProjectId);
+            }
+        } else {
+            alert('Failed to remove pod: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to remove pod: ' + error.message);
+    }
+}
+
+// Start a pod by name
+async function startProjectPodByName(podName) {
+    if (!confirm('Start pod ' + podName + '?')) return;
+    
+    try {
+        const response = await fetch(`/api/pods/${encodeURIComponent(podName)}/start`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            // Refresh pods panel if it's showing
+            if (editingProjectId) {
+                showProjectPodsPanel(editingProjectId);
+            }
+        } else {
+            alert('Failed to start pod: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to start pod: ' + error.message);
+    }
+}
+
+// Reset a pod by name (remove and recreate with fresh requirements)
+async function resetProjectPodByName(podName) {
+    if (!confirm('Reset pod ' + podName + '? This will remove the existing pod and create a new one with fresh requirements.')) return;
+    
+    try {
+        const response = await fetch(`/api/pods/${encodeURIComponent(podName)}/reset`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            // Show requirements info if any
+            let message = 'Pod reset successfully!';
+            if (data.requirements && data.requirements.requirements_installed) {
+                message += '\n\nRequirements installed: ' + data.requirements.requirements_count;
+            } else if (data.requirements && data.requirements.message) {
+                message += '\n\n' + data.requirements.message;
+            }
+            alert(message);
+            
+            // Refresh pods panel if it's showing
+            if (editingProjectId) {
+                showProjectPodsPanel(editingProjectId);
+            }
+        } else {
+            alert('Failed to reset pod: ' + data.message);
+        }
+    } catch (error) {
+        alert('Failed to reset pod: ' + error.message);
     }
 }
 
@@ -520,14 +621,178 @@ async function killGlobalPod(projectId) {
     }
 }
 
+// Show pods panel in dynamic content container
+async function showProjectPodsPanel(projectId) {
+    editingProjectId = projectId;
+    projectSettingsPanel.style.display = 'block';
+    noProjectSelected.style.display = 'none';
+    
+    dynamicContentContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading pods...</p>';
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/pods`);
+        const data = await response.json();
+        
+        if (!data.pods || data.pods.length === 0) {
+            dynamicContentContainer.innerHTML = `
+                <h4>Pods</h4>
+                <p style="color: var(--text-secondary);">No pods found for this project.</p>
+                <button class="save-button" onclick="startProjectPodByNameFromPanel('${projectId}')" style="width: 100%;">Start Pod</button>
+            `;
+            return;
+        }
+        
+        dynamicContentContainer.innerHTML = '<h4>Pods</h4>' + data.pods.map(pod => `
+            <div style="padding: 12px; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${escapeHtml(pod.name)}</strong>
+                        <span style="font-size: 12px; color: ${pod.status.includes('Up') ? 'green' : 'orange'};">
+                            ${escapeHtml(pod.status)}
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #28a745;" 
+                            onclick="startProjectPodByName('${escapeHtml(pod.name)}')">
+                            Start
+                        </button>
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #dc3545;" 
+                            onclick="killProjectPodByName('${escapeHtml(pod.name)}')">
+                            Stop
+                        </button>
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #fd7e14;" 
+                            onclick="resetProjectPodByName('${escapeHtml(pod.name)}')">
+                            Reset
+                        </button>
+                        <button class="save-button" style="padding: 4px 12px; font-size: 12px; background: #6c757d;" 
+                            onclick="removeProjectPodByName('${escapeHtml(pod.name)}')">
+                            Remove
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        dynamicContentContainer.innerHTML = '<p style="color: red;">Failed to load pods: ' + error.message + '</p>';
+    }
+}
+
+// Show context files in dynamic content container
+async function showProjectContextFiles(projectId) {
+    editingProjectId = projectId;
+    projectSettingsPanel.style.display = 'block';
+    noProjectSelected.style.display = 'none';
+    
+    dynamicContentContainer.innerHTML = '<p style="color: var(--text-secondary);">Loading context files...</p>';
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/context-settings`);
+        const data = await response.json();
+        
+        // Build context files UI
+        let html = '<h4>Context Files</h4>';
+        
+        if (allFileTypes && allFileTypes.length > 0) {
+            allFileTypes.forEach(fileType => {
+                if (fileType === 'pod') return; // Skip pod type
+                const currentValue = data[fileType] || '';
+                html += `
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label>${fileType}</label>
+                        <select id="context_${fileType}" class="form-select">
+                            <option value="">None</option>
+                        </select>
+                    </div>
+                `;
+            });
+            html += '<button class="save-button" onclick="saveDynamicContextSettings()" style="width: 100%;">Save Context Settings</button>';
+        }
+        
+        dynamicContentContainer.innerHTML = html;
+        
+        // Load available context files and populate dropdowns
+        const contextResponse = await fetch('/api/context-files');
+        const contextFiles = await contextResponse.json();
+        
+        allFileTypes.forEach(fileType => {
+            if (fileType === 'pod') return;
+            const select = document.getElementById(`context_${fileType}`);
+            if (select) {
+                const filesForType = contextFiles.filter(f => f.type === fileType);
+                filesForType.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file.name;
+                    option.textContent = file.name;
+                    if (data[fileType] === file.name) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+            }
+        });
+        
+    } catch (error) {
+        dynamicContentContainer.innerHTML = '<p style="color: red;">Failed to load context files: ' + error.message + '</p>';
+    }
+}
+
+// Save context settings from dynamic content panel
+async function saveDynamicContextSettings() {
+    if (!editingProjectId) return;
+    
+    const settings = {};
+    allFileTypes.forEach(fileType => {
+        if (fileType === 'pod') return;
+        const select = document.getElementById(`context_${fileType}`);
+        if (select && select.value) {
+            settings[fileType] = select.value;
+        }
+    });
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/context-settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        
+        if (response.ok) {
+            dynamicContentContainer.innerHTML = '<p style="color: green;">Settings saved!</p>';
+            setTimeout(() => showProjectContextFiles(editingProjectId), 1000);
+        } else {
+            dynamicContentContainer.innerHTML = '<p style="color: red;">Failed to save settings</p>';
+        }
+    } catch (error) {
+        dynamicContentContainer.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+    }
+}
+
+// Start pod from panel
+async function startProjectPodByNameFromPanel(projectId) {
+    dynamicContentContainer.innerHTML = '<p style="color: var(--text-secondary);">Starting pod...</p>';
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/pods/start`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            // Refresh pods panel immediately
+            showProjectPodsPanel(projectId);
+        } else {
+            dynamicContentContainer.innerHTML = '<p style="color: red;">' + data.message + '</p>';
+        }
+    } catch (error) {
+        dynamicContentContainer.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+    }
+}
+
 // Event listeners
 createProjectBtn.addEventListener('click', createProject);
 projectNameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') createProject();
 });
 saveSettingsBtn.addEventListener('click', saveProjectSettings);
-showPodsBtn.addEventListener('click', showProjectPods);
-showPodsBtnGlobal.addEventListener('click', showGlobalPods);
 
 // Project selector event listener
 const projectSelect = document.getElementById('headerProject');

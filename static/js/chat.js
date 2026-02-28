@@ -44,6 +44,255 @@ let isLooping = false;
 let traceId = 0;
 let traceEntries = []; // Store trace entries for session persistence
 
+// Terminal mode state
+let terminalMode = false;
+let terminalSessionId = null;
+let terminalWaitingForInput = false;
+let chatMode = true; // true = conversation mode, false = terminal mode
+
+// Load saved mode from localStorage
+function loadSavedMode() {
+    const savedMode = localStorage.getItem('chatMode');
+    if (savedMode === 'terminal') {
+        chatMode = false;
+        terminalMode = true;
+    } else {
+        chatMode = true;
+        terminalMode = false;
+    }
+}
+
+// Save mode to localStorage
+function saveMode() {
+    if (terminalMode) {
+        localStorage.setItem('chatMode', 'terminal');
+    } else {
+        localStorage.setItem('chatMode', 'chat');
+    }
+}
+
+// Strip ANSI color codes from terminal output
+function stripAnsiCodes(text) {
+    // eslint-disable-next-line no-control-regex
+    return text.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+// Terminal mode functions
+async function enterTerminalMode() {
+    if (terminalMode) return;
+    
+    // Update chat mode state
+    chatMode = false;
+    terminalMode = true;
+    saveMode();
+    
+    // Update UI
+    const modeToggle = document.getElementById('modeToggle');
+    if (modeToggle) {
+        modeToggle.classList.add('terminal-mode');
+        modeToggle.querySelector('.mode-icon').textContent = '🖥️';
+        modeToggle.querySelector('.mode-label').textContent = 'Terminal';
+    }
+    
+    // Add terminal class to chat container
+    const chatContainer = document.querySelector('.chat-container');
+    if (chatContainer) {
+        chatContainer.classList.add('terminal-mode');
+    }
+    
+    // Clear chat messages when switching to terminal
+    messages = [];
+    
+    try {
+        // Start a new terminal session
+        const response = await fetch('/api/terminal/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cwd: '/home/aeli/projects/aelilobster' })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            terminalSessionId = data.session_id;
+            
+            // Add system message about entering terminal mode
+            messages.push({
+                role: 'system',
+                content: '🔴 TERMINAL MODE\n\nYou are now in interactive terminal mode.\n• Type any Linux command to execute\n• Use sudo, pipes, redirects - all supported\n• For interactive prompts (yes/no), just type your response\n• Click the toggle button to return to chat mode\n\n' + stripAnsiCodes(data.output),
+                type: 'terminal-status'
+            });
+            
+            renderMessages();
+            addTrace('terminal', 'Terminal Mode', 'Entered terminal mode');
+            
+            // Update input for terminal mode
+            messageInput.placeholder = 'Type command...';
+            messageInput.style.borderColor = '#fd7e14';
+        } else {
+            alert('Failed to start terminal: ' + data.message);
+            // Revert on failure
+            chatMode = true;
+            terminalMode = false;
+            saveMode();
+        }
+    } catch (e) {
+        alert('Error starting terminal: ' + e.message);
+        chatMode = true;
+        terminalMode = false;
+        saveMode();
+    }
+}
+
+async function exitTerminalMode() {
+    if (!terminalMode) return;
+    
+    // Update chat mode state
+    chatMode = true;
+    saveMode();
+    
+    try {
+        // Close the terminal session
+        if (terminalSessionId) {
+            await fetch(`/api/terminal/${terminalSessionId}/close`, { method: 'POST' });
+        }
+        
+        const oldSessionId = terminalSessionId;
+        terminalMode = false;
+        terminalSessionId = null;
+        terminalWaitingForInput = false;
+        
+        // Update UI
+        const modeToggle = document.getElementById('modeToggle');
+        if (modeToggle) {
+            modeToggle.classList.remove('terminal-mode');
+            modeToggle.querySelector('.mode-icon').textContent = '💬';
+            modeToggle.querySelector('.mode-label').textContent = 'Chat';
+        }
+        
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.classList.remove('terminal-mode');
+        }
+        
+        // Clear messages when exiting terminal mode (back to chat)
+        messages = [];
+        
+        // Add system message
+        messages.push({
+            role: 'system',
+            content: '💬 CHAT MODE\n\nReturned to conversation mode. You can now chat with the AI.',
+            type: 'chat-status'
+        });
+        
+        renderMessages();
+        addTrace('terminal', 'Terminal Mode', 'Exited terminal mode (session: ' + oldSessionId + ')');
+        
+        // Restore UI
+        messageInput.placeholder = 'Type a message...';
+        messageInput.style.borderColor = '';
+    } catch (e) {
+        console.error('Error exiting terminal:', e);
+    }
+}
+
+// Toggle between chat and terminal mode
+async function toggleMode() {
+    if (chatMode) {
+        // Switch to terminal mode
+        await enterTerminalMode();
+    } else {
+        // Switch to chat mode
+        await exitTerminalMode();
+    }
+}
+
+async function sendTerminalCommand(command) {
+    // Check for exit command
+    if (command.toLowerCase() === 'exit' || command.toLowerCase() === 'quit') {
+        await exitTerminalMode();
+        return;
+    }
+    
+    // Add user command to messages (with $ prefix)
+    messages.push({ role: 'user', content: '$ ' + command, type: 'terminal-command' });
+    renderMessages();
+    
+    try {
+        const response = await fetch(`/api/terminal/${terminalSessionId}/exec`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: command })
+        });
+        
+        const data = await response.json();
+        
+        if (data.waiting_for_input) {
+            // Command is waiting for interactive input
+            terminalWaitingForInput = true;
+            messages.push({
+                role: 'system',
+                content: '⏳ ' + stripAnsiCodes(data.output) + '\n\nWaiting for input...',
+                type: 'terminal-waiting'
+            });
+        } else {
+            // Command completed - just show output, don't repeat command
+            terminalWaitingForInput = false;
+            const output = stripAnsiCodes(data.output) || '(no output)';
+            messages.push({
+                role: 'assistant',
+                content: output,
+                type: 'terminal-output',
+                exit_code: data.exit_code
+            });
+        }
+        
+        renderMessages();
+    } catch (e) {
+        messages.push({
+            role: 'assistant',
+            content: 'Error: ' + e.message,
+            type: 'terminal-error'
+        });
+        renderMessages();
+    }
+}
+
+async function sendTerminalInput(input) {
+    try {
+        const response = await fetch(`/api/terminal/${terminalSessionId}/input`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ input: input })
+        });
+        
+        const data = await response.json();
+        
+        terminalWaitingForInput = false;
+        
+        messages.push({
+            role: 'system',
+            content: '> ' + input,
+            type: 'terminal-input'
+        });
+        
+        messages.push({
+            role: 'assistant',
+            content: stripAnsiCodes(data.output) || '(no output)',
+            type: 'terminal-output'
+        });
+        
+        renderMessages();
+    } catch (e) {
+        messages.push({
+            role: 'assistant',
+            content: 'Error sending input: ' + e.message,
+            type: 'terminal-error'
+        });
+        renderMessages();
+    }
+}
+
 // Trace logging functions
 function addTrace(type, label, data) {
     const now = new Date();
@@ -222,9 +471,17 @@ if (newChatBtn) {
 
 // Clear chat button
 clearChatBtn.addEventListener('click', () => {
-    if (confirm('Clear all chat messages?')) {
+    const confirmMsg = terminalMode 
+        ? 'Clear all terminal history?' 
+        : 'Clear all chat messages?';
+    if (confirm(confirmMsg)) {
         messages = [];
-        localStorage.removeItem('chatMessages');
+        // Clear only the current mode's messages
+        if (terminalMode) {
+            localStorage.removeItem('terminalMessages');
+        } else {
+            localStorage.removeItem('chatMessages');
+        }
         renderMessages();
         updateProjectSelectorState();
     }
@@ -257,18 +514,114 @@ traceStop.addEventListener('click', async () => {
 
 // Load saved state from localStorage
 async function loadState() {
+    // Load saved chat mode first (before loading messages)
+    loadSavedMode();
+    
+    // Update UI based on loaded mode
+    const modeToggle = document.getElementById('modeToggle');
+    if (modeToggle) {
+        if (terminalMode) {
+            modeToggle.classList.add('terminal-mode');
+            modeToggle.querySelector('.mode-icon').textContent = '🖥️';
+            modeToggle.querySelector('.mode-label').textContent = 'Terminal';
+            
+            // Add terminal class to chat container
+            const chatContainer = document.querySelector('.chat-container');
+            if (chatContainer) {
+                chatContainer.classList.add('terminal-mode');
+            }
+            
+            // Update input for terminal mode
+            messageInput.placeholder = 'Type command...';
+            messageInput.style.borderColor = '#fd7e14';
+        } else {
+            modeToggle.classList.remove('terminal-mode');
+            modeToggle.querySelector('.mode-icon').textContent = '💬';
+            modeToggle.querySelector('.mode-label').textContent = 'Chat';
+            
+            // Remove terminal class from chat container
+            const chatContainer = document.querySelector('.chat-container');
+            if (chatContainer) {
+                chatContainer.classList.remove('terminal-mode');
+            }
+            
+            // Reset input for chat mode
+            messageInput.placeholder = 'Type your message...';
+            messageInput.style.borderColor = '';
+        }
+    }
+    
     const savedModel = localStorage.getItem('selectedModel');
     if (savedModel) {
         modelSelect.value = savedModel;
     }
     
-    const savedMessages = localStorage.getItem('chatMessages');
+    // Load messages appropriate for current mode
+    let savedMessages;
+    if (terminalMode) {
+        savedMessages = localStorage.getItem('terminalMessages');
+    } else {
+        savedMessages = localStorage.getItem('chatMessages');
+    }
     if (savedMessages) {
         try {
             messages = JSON.parse(savedMessages);
             renderMessages();
         } catch (e) {
             messages = [];
+        }
+    }
+    
+    // If loading terminal mode, start a new terminal session
+    if (terminalMode) {
+        try {
+            const response = await fetch('/api/terminal/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cwd: '/home/aeli/projects/aelilobster' })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                terminalSessionId = data.session_id;
+                
+                // Add system message about reconnecting to terminal
+                messages.push({
+                    role: 'system',
+                    content: '🔴 TERMINAL MODE (Reconnected)\n\nYou are now in interactive terminal mode.\n• Type any Linux command to execute\n• Use sudo, pipes, redirects - all supported\n• For interactive prompts (yes/no), just type your response\n• Click the toggle button to return to chat mode\n\n' + stripAnsiCodes(data.output),
+                    type: 'terminal-status'
+                });
+                
+                renderMessages();
+                addTrace('terminal', 'Terminal Session', 'Reconnected to terminal');
+            } else {
+                // Failed to start terminal, switch back to chat mode
+                alert('Failed to start terminal: ' + data.message);
+                chatMode = true;
+                terminalMode = false;
+                saveMode();
+                
+                // Update UI back to chat mode
+                const modeToggle = document.getElementById('modeToggle');
+                if (modeToggle) {
+                    modeToggle.classList.remove('terminal-mode');
+                    modeToggle.querySelector('.mode-icon').textContent = '💬';
+                    modeToggle.querySelector('.mode-label').textContent = 'Chat';
+                }
+                const chatContainer = document.querySelector('.chat-container');
+                if (chatContainer) {
+                    chatContainer.classList.remove('terminal-mode');
+                }
+                messageInput.placeholder = 'Type your message...';
+                messageInput.style.borderColor = '';
+            }
+        } catch (e) {
+            console.error('Error starting terminal session:', e);
+            // On error, fall back to chat mode
+            chatMode = true;
+            terminalMode = false;
+            saveMode();
         }
     }
     
@@ -328,7 +681,13 @@ async function loadProjects() {
 // Save state to localStorage
 function saveState() {
     localStorage.setItem('selectedModel', modelSelect.value);
-    localStorage.setItem('chatMessages', JSON.stringify(messages));
+    
+    // Save messages to appropriate storage based on current mode
+    if (terminalMode) {
+        localStorage.setItem('terminalMessages', JSON.stringify(messages));
+    } else {
+        localStorage.setItem('chatMessages', JSON.stringify(messages));
+    }
     
     const projectSelect = document.getElementById('headerProject');
     if (projectSelect) {
@@ -467,6 +826,21 @@ async function sendMessage() {
     const content = messageInput.value.trim();
     if (!content || isLoading) return;
     
+    // Handle terminal mode
+    if (!chatMode && terminalMode) {
+        if (terminalWaitingForInput) {
+            // Send input to waiting command
+            messageInput.value = '';
+            await sendTerminalInput(content);
+        } else {
+            // Execute terminal command
+            messageInput.value = '';
+            await sendTerminalCommand(content);
+        }
+        return;
+    }
+    
+    // Chat mode - just send to LLM for conversation (no code execution)
     // Add user message
     messages.push({ role: 'user', content, type: 'user' });
     renderMessages();
@@ -519,8 +893,8 @@ async function sendMessage() {
             trace_id: traceId
         });
         
-        // Use the looper endpoint
-        addTrace('process', 'Starting Looper', {
+        // Use simple chat endpoint (no code execution)
+        addTrace('process', 'Sending to LLM', {
             prompt: content,
             model: modelSelect.value,
             messages_count: messages.length
@@ -547,7 +921,7 @@ async function sendMessage() {
             traceEventSource.close();
         };
         
-        const response = await fetch('/api/looper/run', {
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -555,9 +929,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 prompt: content,
                 model: modelSelect.value,
-                project_id: projectId,
                 messages: messages
-                    .filter(m => m.type !== 'command')
+                    .filter(m => m.type !== 'command' && m.type !== 'terminal-command' && m.type !== 'terminal-output')
                     .map(m => ({ role: m.role, content: m.content }))
             })
         });
@@ -573,58 +946,33 @@ async function sendMessage() {
         
         const data = await response.json();
         
-        // Close the trace stream
-        if (traceEventSource) {
-            traceEventSource.close();
-        }
-        
-        // Set looping to false since looper finished
+        // Set looping to false since chat finished
         setLoopingState(false);
         
         // Remove loading message
         const loadingEl = document.getElementById(loadingId);
         if (loadingEl) loadingEl.remove();
         
-        // Handle looper response
-        if (data.success) {
-            // Looper completed successfully
-            addTrace('output', 'Looper Complete', {
-                loop_count: data.loop_count || 1,
-                success: true,
-                results_count: data.successful_results ? data.successful_results.length : 0
+        // Handle simple chat response
+        if (data.output) {
+            addTrace('output', 'LLM Response', {
+                model: data.model,
+                output_length: data.output.length
             });
-            
-            // Build detailed response from command tree
-            let responseText = '';
-            if (data.command_tree && data.command_tree.length > 0) {
-                responseText = buildTreeResponse(data.command_tree);
-            } else {
-                responseText = data.response || (data.successful_results ? data.successful_results.join('\n') : 'Completed');
-            }
             
             messages.push({
                 role: 'assistant',
-                content: responseText,
-                type: 'looper-success',
-                loop_count: data.loop_count
+                content: data.output,
+                type: 'chat'
             });
-        } else {
-            // Looper failed
-            addTrace('error', 'Looper Failed', {
-                error: data.error,
-                loop_count: data.loop_count || 1,
-                stopped: data.stopped || false
+        } else if (data.error) {
+            addTrace('error', 'Chat Error', {
+                error: data.error
             });
-            
-            // Try to show partial results
-            let errorContent = data.error || 'Execution failed';
-            if (data.command_tree && data.command_tree.length > 0) {
-                errorContent = buildTreeResponse(data.command_tree) + '\n\n❌ Error: ' + errorContent;
-            }
             
             messages.push({
                 role: 'assistant',
-                content: errorContent,
+                content: 'Error: ' + data.error,
                 type: 'error'
             });
         }
@@ -685,6 +1033,12 @@ async function sendMessage() {
 
 // Event listeners
 sendButton.addEventListener('click', sendMessage);
+
+// Mode toggle button
+const modeToggle = document.getElementById('modeToggle');
+if (modeToggle) {
+    modeToggle.addEventListener('click', toggleMode);
+}
 
 messageInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

@@ -1,0 +1,2898 @@
+[
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "input",
+    "label": "User Prompt",
+    "data": "give me a command in linux that shows current files in dir (20 words or less).",
+    "time": "07:38:06.248",
+    "timestamp": "2026-02-27T07:38:06.248504"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Tree Looper",
+    "data": {
+      "model": "MiniMax-M2.5",
+      "project": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1"
+    },
+    "time": "07:38:06.300",
+    "timestamp": "2026-02-27T07:38:06.300638"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Project Requirements",
+    "data": {
+      "exists": false,
+      "created": false,
+      "path": null,
+      "message": "No project dir"
+    },
+    "time": "07:38:06.301",
+    "timestamp": "2026-02-27T07:38:06.301057"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Project Files",
+    "data": {
+      "count": 0,
+      "files": []
+    },
+    "time": "07:38:06.301",
+    "timestamp": "2026-02-27T07:38:06.301301"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Calling LLM for Commands",
+    "data": {
+      "prompt": "give me a command in linux that shows current files in dir (20 words or less)."
+    },
+    "time": "07:38:06.301",
+    "timestamp": "2026-02-27T07:38:06.301518"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "LLM Response",
+    "data": {
+      "length": 144,
+      "preview": "Here's a simple Linux command to list files in the current directory:\n\n```\nls\n```\n\nOr for more details (including hidden files):\n\n```\nls -la\n```"
+    },
+    "time": "07:38:11.776",
+    "timestamp": "2026-02-27T07:38:11.776030"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Extracted Commands",
+    "data": {
+      "count": 2
+    },
+    "time": "07:38:11.828",
+    "timestamp": "2026-02-27T07:38:11.828904"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "ls",
+      "language": "text",
+      "node_id": "1573269c"
+    },
+    "time": "07:38:11.829",
+    "timestamp": "2026-02-27T07:38:11.829336"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-1573269c",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "07:38:11.829",
+    "timestamp": "2026-02-27T07:38:11.829643"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-1573269c",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:38:13.982",
+    "timestamp": "2026-02-27T07:38:13.982596"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 0)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:38:13.983",
+    "timestamp": "2026-02-27T07:38:13.983038"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 0",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:38:13.994",
+    "timestamp": "2026-02-27T07:38:13.994419"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 1)",
+    "data": {
+      "code_preview": "ls",
+      "language": "bash",
+      "node_id": "a09f1305"
+    },
+    "time": "07:38:29.502",
+    "timestamp": "2026-02-27T07:38:29.503006"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-a09f1305",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "07:38:29.503",
+    "timestamp": "2026-02-27T07:38:29.503476"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-a09f1305",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:38:31.660",
+    "timestamp": "2026-02-27T07:38:31.660706"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 1)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:38:31.661",
+    "timestamp": "2026-02-27T07:38:31.661293"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 1",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:38:31.672",
+    "timestamp": "2026-02-27T07:38:31.672104"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 2)",
+    "data": {
+      "code_preview": "ls",
+      "language": "shell",
+      "node_id": "366e1365"
+    },
+    "time": "07:38:46.687",
+    "timestamp": "2026-02-27T07:38:46.687122"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-366e1365",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "07:38:46.687",
+    "timestamp": "2026-02-27T07:38:46.687733"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-366e1365",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:38:48.828",
+    "timestamp": "2026-02-27T07:38:48.828170"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 2)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:38:48.828",
+    "timestamp": "2026-02-27T07:38:48.828621"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 2",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:38:48.839",
+    "timestamp": "2026-02-27T07:38:48.839410"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 3)",
+    "data": {
+      "code_preview": "docker ps -a | grep test-user_testproject1-pod",
+      "language": "bash",
+      "node_id": "fb06d557"
+    },
+    "time": "07:39:10.476",
+    "timestamp": "2026-02-27T07:39:10.476635"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-fb06d557",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker ps -a | grep test-user_testproject1-pod"
+    },
+    "time": "07:39:10.477",
+    "timestamp": "2026-02-27T07:39:10.477323"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-fb06d557",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:39:12.618",
+    "timestamp": "2026-02-27T07:39:12.618209"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 3)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:12.619",
+    "timestamp": "2026-02-27T07:39:12.619224"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 3",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:12.630",
+    "timestamp": "2026-02-27T07:39:12.630664"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 4)",
+    "data": {
+      "code_preview": "docker ps -a",
+      "language": "bash",
+      "node_id": "0a9aacfd"
+    },
+    "time": "07:39:24.676",
+    "timestamp": "2026-02-27T07:39:24.676183"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-0a9aacfd",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker ps -a"
+    },
+    "time": "07:39:24.677",
+    "timestamp": "2026-02-27T07:39:24.677336"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-0a9aacfd",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:39:26.864",
+    "timestamp": "2026-02-27T07:39:26.864855"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 4)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:26.865",
+    "timestamp": "2026-02-27T07:39:26.865394"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 4",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:26.876",
+    "timestamp": "2026-02-27T07:39:26.876880"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 5)",
+    "data": {
+      "code_preview": "docker ps -a",
+      "language": "docker",
+      "node_id": "31657678"
+    },
+    "time": "07:39:43.928",
+    "timestamp": "2026-02-27T07:39:43.928047"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-31657678",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker ps -a"
+    },
+    "time": "07:39:43.928",
+    "timestamp": "2026-02-27T07:39:43.928853"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-31657678",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:39:46.062",
+    "timestamp": "2026-02-27T07:39:46.062162"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 5)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:46.062",
+    "timestamp": "2026-02-27T07:39:46.062695"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "ls -la",
+      "language": "text",
+      "node_id": "66484fa2"
+    },
+    "time": "07:39:46.115",
+    "timestamp": "2026-02-27T07:39:46.115740"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-66484fa2",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "ls -la"
+    },
+    "time": "07:39:46.116",
+    "timestamp": "2026-02-27T07:39:46.116301"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-66484fa2",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:39:48.254",
+    "timestamp": "2026-02-27T07:39:48.254266"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 0)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:48.255",
+    "timestamp": "2026-02-27T07:39:48.255103"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 0",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:48.266",
+    "timestamp": "2026-02-27T07:39:48.266159"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 1)",
+    "data": {
+      "code_preview": "docker start test-user_testproject1-pod",
+      "language": "bash",
+      "node_id": "16b2e9be"
+    },
+    "time": "07:39:56.135",
+    "timestamp": "2026-02-27T07:39:56.135336"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-16b2e9be",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker start test-user_testproject1-pod"
+    },
+    "time": "07:39:56.136",
+    "timestamp": "2026-02-27T07:39:56.136197"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-16b2e9be",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:39:58.298",
+    "timestamp": "2026-02-27T07:39:58.298534"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 1)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:58.299",
+    "timestamp": "2026-02-27T07:39:58.299173"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 1",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:39:58.310",
+    "timestamp": "2026-02-27T07:39:58.310396"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 2)",
+    "data": {
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -E \"(testproject1|pod)\" || echo \"No matching containers fo...",
+      "language": "bash",
+      "node_id": "64a91937"
+    },
+    "time": "07:40:19.205",
+    "timestamp": "2026-02-27T07:40:19.205040"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-64a91937",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -E \"(testproject1|pod)\" || echo \"No matching containers fo..."
+    },
+    "time": "07:40:19.205",
+    "timestamp": "2026-02-27T07:40:19.205921"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-64a91937",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:40:21.371",
+    "timestamp": "2026-02-27T07:40:21.371376"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 2)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:40:21.372",
+    "timestamp": "2026-02-27T07:40:21.372057"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 2",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:40:21.423",
+    "timestamp": "2026-02-27T07:40:21.423858"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 3)",
+    "data": {
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -E \"testproject1.*pod\" || echo \"No matching containers fou...",
+      "language": "bash",
+      "node_id": "8d77e617"
+    },
+    "time": "07:40:39.192",
+    "timestamp": "2026-02-27T07:40:39.192562"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-8d77e617",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -E \"testproject1.*pod\" || echo \"No matching containers fou..."
+    },
+    "time": "07:40:39.193",
+    "timestamp": "2026-02-27T07:40:39.193330"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-8d77e617",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:40:41.377",
+    "timestamp": "2026-02-27T07:40:41.377929"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 3)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:40:41.378",
+    "timestamp": "2026-02-27T07:40:41.378655"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 3",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:40:41.390",
+    "timestamp": "2026-02-27T07:40:41.390386"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 4)",
+    "data": {
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -E \"testproject1.*pod\" || echo \"No matching containers fou...",
+      "language": "bash",
+      "node_id": "8d0d2d00"
+    },
+    "time": "07:40:55.711",
+    "timestamp": "2026-02-27T07:40:55.711777"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-8d0d2d00",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -E \"testproject1.*pod\" || echo \"No matching containers fou..."
+    },
+    "time": "07:40:55.712",
+    "timestamp": "2026-02-27T07:40:55.712847"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-8d0d2d00",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:40:57.851",
+    "timestamp": "2026-02-27T07:40:57.851936"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 4)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:40:57.852",
+    "timestamp": "2026-02-27T07:40:57.852726"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "error",
+    "label": "Error at Level 4",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:40:57.905",
+    "timestamp": "2026-02-27T07:40:57.905434"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Executing Code (Level 5)",
+    "data": {
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -iE \"testproject1.*pod\" || echo \"No matching containers fo...",
+      "language": "bash",
+      "node_id": "ceb6342b"
+    },
+    "time": "07:41:17.830",
+    "timestamp": "2026-02-27T07:41:17.830637"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test-user-testproject1-pod-ceb6342b",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1",
+      "keep_running": true,
+      "code_preview": "docker ps -a --format \"{{.Names}}\" | grep -iE \"testproject1.*pod\" || echo \"No matching containers fo..."
+    },
+    "time": "07:41:17.831",
+    "timestamp": "2026-02-27T07:41:17.831673"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test-user-testproject1-pod-ceb6342b",
+      "keep_running": true,
+      "exit_code": 125
+    },
+    "time": "07:41:20.017",
+    "timestamp": "2026-02-27T07:41:20.017164"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Code Result (Level 5)",
+    "data": {
+      "exit_code": 125,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n"
+    },
+    "time": "07:41:20.018",
+    "timestamp": "2026-02-27T07:41:20.018059"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "All Pods Destroyed",
+    "data": {
+      "total_containers": 2,
+      "note": "All podman containers have been removed"
+    },
+    "time": "07:41:20.070",
+    "timestamp": "2026-02-27T07:41:20.070278"
+  },
+  {
+    "trace_id": "20260227_073806_236335",
+    "type": "output",
+    "label": "Looper Complete",
+    "data": {
+      "total_commands": 2,
+      "successful": 0,
+      "failed": 2,
+      "response": "**Command 1:**\n```\nls\n```\n\u274c Failed: Error: no container with name or ID \"test-user_testproject1-pod\" found: no such container\n\n\n    \u2514\u2500 Attempt 1: \u274c Failed\nError: no container with name or ID \"test-use"
+    },
+    "time": "07:41:20.071",
+    "timestamp": "2026-02-27T07:41:20.071090"
+  },
+  {
+    "trace_id": "20260227_074840_372834",
+    "type": "input",
+    "label": "User Prompt",
+    "data": "give me a command in linux that shows current files in dir (20 words or less).",
+    "time": "07:48:40.391",
+    "timestamp": "2026-02-27T07:48:40.391024"
+  },
+  {
+    "trace_id": "20260227_074840_372834",
+    "type": "process",
+    "label": "Starting Tree Looper",
+    "data": {
+      "model": "MiniMax-M2.5",
+      "project": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1"
+    },
+    "time": "07:48:40.391",
+    "timestamp": "2026-02-27T07:48:40.391952"
+  },
+  {
+    "trace_id": "20260227_074840_372834",
+    "type": "process",
+    "label": "Project Requirements",
+    "data": {
+      "exists": false,
+      "created": false,
+      "path": null,
+      "message": "No project dir"
+    },
+    "time": "07:48:40.445",
+    "timestamp": "2026-02-27T07:48:40.445128"
+  },
+  {
+    "trace_id": "20260227_074840_372834",
+    "type": "process",
+    "label": "Project Files",
+    "data": {
+      "count": 0,
+      "files": []
+    },
+    "time": "07:48:40.446",
+    "timestamp": "2026-02-27T07:48:40.446066"
+  },
+  {
+    "trace_id": "20260227_074840_372834",
+    "type": "process",
+    "label": "Calling LLM for Commands",
+    "data": {
+      "prompt": "give me a command in linux that shows current files in dir (20 words or less)."
+    },
+    "time": "07:48:40.446",
+    "timestamp": "2026-02-27T07:48:40.446969"
+  },
+  {
+    "trace_id": "20260227_074840_372834",
+    "type": "output",
+    "label": "LLM Response",
+    "data": {
+      "length": 99,
+      "preview": "`ls` \u2014 lists files in current directory\n\n`ls -la` \u2014 lists all files (including hidden) with details"
+    },
+    "time": "07:48:45.151",
+    "timestamp": "2026-02-27T07:48:45.151862"
+  },
+  {
+    "trace_id": "20260227_075650_176019",
+    "type": "input",
+    "label": "User Prompt",
+    "data": "give me a command in linux that shows current files in dir (20 words or less).",
+    "time": "07:56:50.195",
+    "timestamp": "2026-02-27T07:56:50.195701"
+  },
+  {
+    "trace_id": "20260227_075650_176019",
+    "type": "process",
+    "label": "Starting Tree Looper",
+    "data": {
+      "model": "MiniMax-M2.5",
+      "project": "/home/aeli/projects/aelilobster/user_login/test/user_testproject1"
+    },
+    "time": "07:56:50.196",
+    "timestamp": "2026-02-27T07:56:50.196706"
+  },
+  {
+    "trace_id": "20260227_075650_176019",
+    "type": "process",
+    "label": "Project Requirements",
+    "data": {
+      "exists": false,
+      "created": false,
+      "path": null,
+      "message": "No project dir"
+    },
+    "time": "07:56:50.208",
+    "timestamp": "2026-02-27T07:56:50.208978"
+  },
+  {
+    "trace_id": "20260227_075650_176019",
+    "type": "process",
+    "label": "Project Files",
+    "data": {
+      "count": 0,
+      "files": []
+    },
+    "time": "07:56:50.209",
+    "timestamp": "2026-02-27T07:56:50.209882"
+  },
+  {
+    "trace_id": "20260227_075650_176019",
+    "type": "process",
+    "label": "Calling LLM for Commands",
+    "data": {
+      "prompt": "give me a command in linux that shows current files in dir (20 words or less)."
+    },
+    "time": "07:56:50.210",
+    "timestamp": "2026-02-27T07:56:50.210709"
+  },
+  {
+    "trace_id": "20260227_075650_176019",
+    "type": "output",
+    "label": "LLM Response",
+    "data": {
+      "length": 83,
+      "preview": "`ls` \u2014 lists files in current directory. Add `-la` to see hidden files and details."
+    },
+    "time": "07:56:58.998",
+    "timestamp": "2026-02-27T07:56:58.998336"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "input",
+    "label": "User Prompt",
+    "data": "give me a command in linux that shows current files in dir (20 words or less).",
+    "time": "05:34:32.202",
+    "timestamp": "2026-02-28T05:34:32.202792"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Starting Tree Looper",
+    "data": {
+      "model": "MiniMax-M2.5",
+      "project": null
+    },
+    "time": "05:34:32.203",
+    "timestamp": "2026-02-28T05:34:32.203930"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Calling LLM for Commands",
+    "data": {
+      "prompt": "give me a command in linux that shows current files in dir (20 words or less)."
+    },
+    "time": "05:34:32.216",
+    "timestamp": "2026-02-28T05:34:32.216973"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "LLM Response",
+    "data": {
+      "length": 53,
+      "preview": "`ls` or `ls -la` for detailed view with hidden files."
+    },
+    "time": "05:34:45.752",
+    "timestamp": "2026-02-28T05:34:45.752807"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Extracted Commands",
+    "data": {
+      "count": 1
+    },
+    "time": "05:34:45.754",
+    "timestamp": "2026-02-28T05:34:45.754152"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "ls",
+      "language": "shell",
+      "node_id": "a76f24c0"
+    },
+    "time": "05:34:45.807",
+    "timestamp": "2026-02-28T05:34:45.807253"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-default-pod-a76f24c0",
+      "image": "python:3-alpine",
+      "work_dir": "/tmp",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "05:34:45.808",
+    "timestamp": "2026-02-28T05:34:45.808256"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-default-pod-a76f24c0",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "05:34:46.993",
+    "timestamp": "2026-02-28T05:34:46.993429"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Code Result (Level 0)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:34:46.994",
+    "timestamp": "2026-02-28T05:34:46.994118"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "error",
+    "label": "Error at Level 0",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:34:47.006",
+    "timestamp": "2026-02-28T05:34:47.006315"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Executing Code (Level 1)",
+    "data": {
+      "code_preview": "ls",
+      "language": "python",
+      "node_id": "a3a34862"
+    },
+    "time": "05:34:57.813",
+    "timestamp": "2026-02-28T05:34:57.813709"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-default-pod-a3a34862",
+      "image": "python:3-alpine",
+      "work_dir": "/tmp",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "05:34:57.815",
+    "timestamp": "2026-02-28T05:34:57.815108"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-default-pod-a3a34862",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "05:34:58.963",
+    "timestamp": "2026-02-28T05:34:58.963801"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Code Result (Level 1)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:34:58.965",
+    "timestamp": "2026-02-28T05:34:58.965211"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "error",
+    "label": "Error at Level 1",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:34:58.976",
+    "timestamp": "2026-02-28T05:34:58.976910"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Executing Code (Level 2)",
+    "data": {
+      "code_preview": "ls",
+      "language": "python",
+      "node_id": "315eb6a8"
+    },
+    "time": "05:35:09.799",
+    "timestamp": "2026-02-28T05:35:09.799675"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-default-pod-315eb6a8",
+      "image": "python:3-alpine",
+      "work_dir": "/tmp",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "05:35:09.801",
+    "timestamp": "2026-02-28T05:35:09.801138"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-default-pod-315eb6a8",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "05:35:11.016",
+    "timestamp": "2026-02-28T05:35:11.016774"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Code Result (Level 2)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:35:11.017",
+    "timestamp": "2026-02-28T05:35:11.017888"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "error",
+    "label": "Error at Level 2",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:35:11.029",
+    "timestamp": "2026-02-28T05:35:11.029586"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Executing Code (Level 3)",
+    "data": {
+      "code_preview": "ls",
+      "language": "shell",
+      "node_id": "3239d2f1"
+    },
+    "time": "05:35:24.234",
+    "timestamp": "2026-02-28T05:35:24.234468"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-default-pod-3239d2f1",
+      "image": "python:3-alpine",
+      "work_dir": "/tmp",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "05:35:24.235",
+    "timestamp": "2026-02-28T05:35:24.235866"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-default-pod-3239d2f1",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "05:35:25.454",
+    "timestamp": "2026-02-28T05:35:25.454065"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Code Result (Level 3)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:35:25.454",
+    "timestamp": "2026-02-28T05:35:25.454987"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "error",
+    "label": "Error at Level 3",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:35:25.466",
+    "timestamp": "2026-02-28T05:35:25.466685"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Executing Code (Level 4)",
+    "data": {
+      "code_preview": "ls",
+      "language": "shell",
+      "node_id": "f3fcab1d"
+    },
+    "time": "05:35:37.956",
+    "timestamp": "2026-02-28T05:35:37.956202"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-default-pod-f3fcab1d",
+      "image": "python:3-alpine",
+      "work_dir": "/tmp",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "05:35:37.957",
+    "timestamp": "2026-02-28T05:35:37.957601"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-default-pod-f3fcab1d",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "05:35:39.110",
+    "timestamp": "2026-02-28T05:35:39.110340"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Code Result (Level 4)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:35:39.111",
+    "timestamp": "2026-02-28T05:35:39.111325"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "error",
+    "label": "Error at Level 4",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:35:39.146",
+    "timestamp": "2026-02-28T05:35:39.146423"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Executing Code (Level 5)",
+    "data": {
+      "code_preview": "ls",
+      "language": "python",
+      "node_id": "1034ffa7"
+    },
+    "time": "05:36:02.737",
+    "timestamp": "2026-02-28T05:36:02.737685"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-default-pod-1034ffa7",
+      "image": "python:3-alpine",
+      "work_dir": "/tmp",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "05:36:02.739",
+    "timestamp": "2026-02-28T05:36:02.739209"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-default-pod-1034ffa7",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "05:36:03.956",
+    "timestamp": "2026-02-28T05:36:03.956311"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Code Result (Level 5)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "05:36:03.957",
+    "timestamp": "2026-02-28T05:36:03.957151"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "All Pods Destroyed",
+    "data": {
+      "total_containers": 1,
+      "note": "All podman containers have been removed"
+    },
+    "time": "05:36:03.969",
+    "timestamp": "2026-02-28T05:36:03.969245"
+  },
+  {
+    "trace_id": "20260228_053432_177176",
+    "type": "output",
+    "label": "Looper Complete",
+    "data": {
+      "total_commands": 1,
+      "successful": 0,
+      "failed": 1,
+      "response": "**Command 1:**\n```\nls\n```\n\u274c Failed: Error: can only create exec sessions on running containers: container state improper\n\n\n    \u2514\u2500 Attempt 1: \u274c Failed\nError: can only create exec sessions on running co"
+    },
+    "time": "05:36:03.969",
+    "timestamp": "2026-02-28T05:36:03.969998"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "input",
+    "label": "User Prompt",
+    "data": "give me a command in linux that shows current files in dir (20 words or less).",
+    "time": "06:27:29.374",
+    "timestamp": "2026-02-28T06:27:29.374056"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Tree Looper",
+    "data": {
+      "model": "MiniMax-M2.5",
+      "project": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1"
+    },
+    "time": "06:27:29.375",
+    "timestamp": "2026-02-28T06:27:29.375406"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Project Requirements",
+    "data": {
+      "exists": true,
+      "created": true,
+      "path": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1/requirements.txt",
+      "message": "Created requirements.txt"
+    },
+    "time": "06:27:29.388",
+    "timestamp": "2026-02-28T06:27:29.388565"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Project Files",
+    "data": {
+      "count": 1,
+      "files": [
+        "requirements.txt"
+      ]
+    },
+    "time": "06:27:29.389",
+    "timestamp": "2026-02-28T06:27:29.389866"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Calling LLM for Commands",
+    "data": {
+      "prompt": "give me a command in linux that shows current files in dir (20 words or less)."
+    },
+    "time": "06:27:29.391",
+    "timestamp": "2026-02-28T06:27:29.391025"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "LLM Response",
+    "data": {
+      "length": 96,
+      "preview": "The simplest command is:\n\n```\nls\n```\n\nFor more details (including hidden files):\n\n```\nls -la\n```"
+    },
+    "time": "06:27:34.494",
+    "timestamp": "2026-02-28T06:27:34.494197"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Extracted Commands",
+    "data": {
+      "count": 2
+    },
+    "time": "06:27:34.531",
+    "timestamp": "2026-02-28T06:27:34.531259"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "ls",
+      "language": "text",
+      "node_id": "ec1be10d"
+    },
+    "time": "06:27:34.532",
+    "timestamp": "2026-02-28T06:27:34.532715"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-ec1be10d",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "06:27:34.536",
+    "timestamp": "2026-02-28T06:27:34.536119"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-ec1be10d",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:27:36.689",
+    "timestamp": "2026-02-28T06:27:36.689654"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 0)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:27:36.691",
+    "timestamp": "2026-02-28T06:27:36.691196"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 0",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:27:36.703",
+    "timestamp": "2026-02-28T06:27:36.703340"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 1)",
+    "data": {
+      "code_preview": "docker start <container_name> && docker exec <container_name> ls",
+      "language": "bash",
+      "node_id": "af128b81"
+    },
+    "time": "06:28:03.304",
+    "timestamp": "2026-02-28T06:28:03.304696"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-af128b81",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_name> && docker exec <container_name> ls"
+    },
+    "time": "06:28:03.306",
+    "timestamp": "2026-02-28T06:28:03.306192"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-af128b81",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:28:04.473",
+    "timestamp": "2026-02-28T06:28:04.473353"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 1)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:04.475",
+    "timestamp": "2026-02-28T06:28:04.475065"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 1",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:04.486",
+    "timestamp": "2026-02-28T06:28:04.486970"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 2)",
+    "data": {
+      "code_preview": "docker start <container_name> && sleep 2 && docker exec <container_name> ls",
+      "language": "bash",
+      "node_id": "e086c7fd"
+    },
+    "time": "06:28:19.272",
+    "timestamp": "2026-02-28T06:28:19.272541"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-e086c7fd",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_name> && sleep 2 && docker exec <container_name> ls"
+    },
+    "time": "06:28:19.326",
+    "timestamp": "2026-02-28T06:28:19.326746"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-e086c7fd",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:28:20.484",
+    "timestamp": "2026-02-28T06:28:20.484594"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 2)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:20.485",
+    "timestamp": "2026-02-28T06:28:20.485838"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 2",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:20.498",
+    "timestamp": "2026-02-28T06:28:20.498154"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 3)",
+    "data": {
+      "code_preview": "docker start <container_name> && docker wait <container_name> && docker exec <container_name> ls",
+      "language": "bash",
+      "node_id": "c8e70b4e"
+    },
+    "time": "06:28:26.444",
+    "timestamp": "2026-02-28T06:28:26.444754"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-c8e70b4e",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_name> && docker wait <container_name> && docker exec <container_name> ls"
+    },
+    "time": "06:28:26.446",
+    "timestamp": "2026-02-28T06:28:26.446469"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-c8e70b4e",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:28:27.621",
+    "timestamp": "2026-02-28T06:28:27.621594"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 3)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:27.623",
+    "timestamp": "2026-02-28T06:28:27.623142"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 3",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:27.635",
+    "timestamp": "2026-02-28T06:28:27.635237"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 4)",
+    "data": {
+      "code_preview": "docker start <container_name> && docker exec <container_name> ls",
+      "language": "docker",
+      "node_id": "ffd76412"
+    },
+    "time": "06:28:44.474",
+    "timestamp": "2026-02-28T06:28:44.474327"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-ffd76412",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_name> && docker exec <container_name> ls"
+    },
+    "time": "06:28:44.476",
+    "timestamp": "2026-02-28T06:28:44.476587"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-ffd76412",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:28:45.664",
+    "timestamp": "2026-02-28T06:28:45.664362"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 4)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:45.665",
+    "timestamp": "2026-02-28T06:28:45.665979"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 4",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:45.677",
+    "timestamp": "2026-02-28T06:28:45.677920"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 5)",
+    "data": {
+      "code_preview": "docker start <container_name> && until docker inspect -f '{{.State.Running}}' <container_name> &>/de...",
+      "language": "bash",
+      "node_id": "80f1afb8"
+    },
+    "time": "06:28:54.753",
+    "timestamp": "2026-02-28T06:28:54.753394"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-80f1afb8",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_name> && until docker inspect -f '{{.State.Running}}' <container_name> &>/de..."
+    },
+    "time": "06:28:54.806",
+    "timestamp": "2026-02-28T06:28:54.806262"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-80f1afb8",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:28:55.942",
+    "timestamp": "2026-02-28T06:28:55.942062"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 5)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:55.943",
+    "timestamp": "2026-02-28T06:28:55.943760"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "ls -la",
+      "language": "text",
+      "node_id": "828dbd99"
+    },
+    "time": "06:28:55.956",
+    "timestamp": "2026-02-28T06:28:55.956108"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-828dbd99",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "ls -la"
+    },
+    "time": "06:28:55.957",
+    "timestamp": "2026-02-28T06:28:55.957225"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-828dbd99",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:28:57.111",
+    "timestamp": "2026-02-28T06:28:57.111015"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 0)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:57.112",
+    "timestamp": "2026-02-28T06:28:57.112713"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 0",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:28:57.124",
+    "timestamp": "2026-02-28T06:28:57.124743"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 1)",
+    "data": {
+      "code_preview": "docker start <container_id_or_name> && docker exec -it <container_id_or_name> ls -la",
+      "language": "bash",
+      "node_id": "e3e1d3a1"
+    },
+    "time": "06:29:04.867",
+    "timestamp": "2026-02-28T06:29:04.867079"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-e3e1d3a1",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_id_or_name> && docker exec -it <container_id_or_name> ls -la"
+    },
+    "time": "06:29:04.868",
+    "timestamp": "2026-02-28T06:29:04.868299"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-e3e1d3a1",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:29:06.068",
+    "timestamp": "2026-02-28T06:29:06.068329"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 1)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:29:06.070",
+    "timestamp": "2026-02-28T06:29:06.070104"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 1",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:29:06.082",
+    "timestamp": "2026-02-28T06:29:06.082300"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 2)",
+    "data": {
+      "code_preview": "docker start <container_id_or_name> && while [ -z \"$(docker inspect -f '{{.State.Running}}' <contain...",
+      "language": "bash",
+      "node_id": "17e8809e"
+    },
+    "time": "06:29:14.269",
+    "timestamp": "2026-02-28T06:29:14.269896"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-17e8809e",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_id_or_name> && while [ -z \"$(docker inspect -f '{{.State.Running}}' <contain..."
+    },
+    "time": "06:29:14.271",
+    "timestamp": "2026-02-28T06:29:14.271829"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-17e8809e",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:29:15.483",
+    "timestamp": "2026-02-28T06:29:15.483630"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 2)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:29:15.485",
+    "timestamp": "2026-02-28T06:29:15.485797"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 2",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:29:15.499",
+    "timestamp": "2026-02-28T06:29:15.499332"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 3)",
+    "data": {
+      "code_preview": "docker start <container_id_or_name> && until docker inspect -f '{{.State.Running}}' <container_id_or...",
+      "language": "bash",
+      "node_id": "d9242a90"
+    },
+    "time": "06:29:37.110",
+    "timestamp": "2026-02-28T06:29:37.110674"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-d9242a90",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_id_or_name> && until docker inspect -f '{{.State.Running}}' <container_id_or..."
+    },
+    "time": "06:29:37.163",
+    "timestamp": "2026-02-28T06:29:37.163589"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-d9242a90",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:29:38.319",
+    "timestamp": "2026-02-28T06:29:38.319785"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 3)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:29:38.321",
+    "timestamp": "2026-02-28T06:29:38.321643"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 3",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:29:38.333",
+    "timestamp": "2026-02-28T06:29:38.333967"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 4)",
+    "data": {
+      "code_preview": "docker start <container_id_or_name> && while [ \"$(docker inspect -f '{{.State.Status}}' <container_i...",
+      "language": "bash",
+      "node_id": "d569ac3e"
+    },
+    "time": "06:30:04.967",
+    "timestamp": "2026-02-28T06:30:04.967661"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-d569ac3e",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "docker start <container_id_or_name> && while [ \"$(docker inspect -f '{{.State.Status}}' <container_i..."
+    },
+    "time": "06:30:04.969",
+    "timestamp": "2026-02-28T06:30:04.969803"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-d569ac3e",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:30:06.117",
+    "timestamp": "2026-02-28T06:30:06.117851"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 4)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:30:06.119",
+    "timestamp": "2026-02-28T06:30:06.119875"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "error",
+    "label": "Error at Level 4",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:30:06.156",
+    "timestamp": "2026-02-28T06:30:06.156027"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Executing Code (Level 5)",
+    "data": {
+      "code_preview": "CONTAINER=<container_id_or_name>\ndocker start \"$CONTAINER\" && \\\nwhile [ \"$(docker inspect -f '{{.Sta...",
+      "language": "bash",
+      "node_id": "6e8d4602"
+    },
+    "time": "06:30:20.833",
+    "timestamp": "2026-02-28T06:30:20.833646"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-6e8d4602",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "CONTAINER=<container_id_or_name>\ndocker start \"$CONTAINER\" && \\\nwhile [ \"$(docker inspect -f '{{.Sta..."
+    },
+    "time": "06:30:20.836",
+    "timestamp": "2026-02-28T06:30:20.836336"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-6e8d4602",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:30:22.025",
+    "timestamp": "2026-02-28T06:30:22.025643"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Code Result (Level 5)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:30:22.027",
+    "timestamp": "2026-02-28T06:30:22.027412"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "All Pods Destroyed",
+    "data": {
+      "total_containers": 2,
+      "note": "All podman containers have been removed"
+    },
+    "time": "06:30:22.039",
+    "timestamp": "2026-02-28T06:30:22.039562"
+  },
+  {
+    "trace_id": "20260228_062729_356060",
+    "type": "output",
+    "label": "Looper Complete",
+    "data": {
+      "total_commands": 2,
+      "successful": 0,
+      "failed": 2,
+      "response": "**Command 1:**\n```\nls\n```\n\u274c Failed: Error: can only create exec sessions on running containers: container state improper\n\n\n    \u2514\u2500 Attempt 1: \u274c Failed\nError: can only create exec sessions on running co"
+    },
+    "time": "06:30:22.041",
+    "timestamp": "2026-02-28T06:30:22.041248"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "input",
+    "label": "User Prompt",
+    "data": "give me a command in linux that shows current files in dir (20 words or less).",
+    "time": "06:30:58.178",
+    "timestamp": "2026-02-28T06:30:58.178118"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Starting Tree Looper",
+    "data": {
+      "model": "MiniMax-M2.5",
+      "project": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1"
+    },
+    "time": "06:30:58.215",
+    "timestamp": "2026-02-28T06:30:58.215020"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Project Requirements",
+    "data": {
+      "exists": true,
+      "created": false,
+      "path": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1/requirements.txt",
+      "message": "Found requirements.txt"
+    },
+    "time": "06:30:58.217",
+    "timestamp": "2026-02-28T06:30:58.217183"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Project Files",
+    "data": {
+      "count": 1,
+      "files": [
+        "requirements.txt"
+      ]
+    },
+    "time": "06:30:58.219",
+    "timestamp": "2026-02-28T06:30:58.219097"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Calling LLM for Commands",
+    "data": {
+      "prompt": "give me a command in linux that shows current files in dir (20 words or less)."
+    },
+    "time": "06:30:58.220",
+    "timestamp": "2026-02-28T06:30:58.220874"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "LLM Response",
+    "data": {
+      "length": 149,
+      "preview": "`ls` - lists files in current directory\n\n`ls -la` - lists all files with details (including hidden)\n\n`ls -lh` - lists files with human-readable sizes"
+    },
+    "time": "06:31:08.270",
+    "timestamp": "2026-02-28T06:31:08.270443"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Extracted Commands",
+    "data": {
+      "count": 1
+    },
+    "time": "06:31:08.272",
+    "timestamp": "2026-02-28T06:31:08.272683"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "ls",
+      "language": "shell",
+      "node_id": "8097f375"
+    },
+    "time": "06:31:08.286",
+    "timestamp": "2026-02-28T06:31:08.286864"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-8097f375",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "06:31:08.288",
+    "timestamp": "2026-02-28T06:31:08.288747"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-8097f375",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:31:09.439",
+    "timestamp": "2026-02-28T06:31:09.439838"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Code Result (Level 0)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:09.441",
+    "timestamp": "2026-02-28T06:31:09.441997"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "error",
+    "label": "Error at Level 0",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:09.454",
+    "timestamp": "2026-02-28T06:31:09.454475"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Executing Code (Level 1)",
+    "data": {
+      "code_preview": "ls",
+      "language": "shell",
+      "node_id": "6575359e"
+    },
+    "time": "06:31:19.906",
+    "timestamp": "2026-02-28T06:31:19.906129"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-6575359e",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "ls"
+    },
+    "time": "06:31:19.908",
+    "timestamp": "2026-02-28T06:31:19.908295"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-6575359e",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:31:21.055",
+    "timestamp": "2026-02-28T06:31:21.055893"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Code Result (Level 1)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:21.057",
+    "timestamp": "2026-02-28T06:31:21.057900"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "error",
+    "label": "Error at Level 1",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:21.070",
+    "timestamp": "2026-02-28T06:31:21.070515"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Executing Code (Level 2)",
+    "data": {
+      "code_preview": "import docker\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_name\")\n\nif c...",
+      "language": "python",
+      "node_id": "83358f86"
+    },
+    "time": "06:31:38.663",
+    "timestamp": "2026-02-28T06:31:38.663220"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-83358f86",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "import docker\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_name\")\n\nif c..."
+    },
+    "time": "06:31:38.665",
+    "timestamp": "2026-02-28T06:31:38.665408"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-83358f86",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:31:39.851",
+    "timestamp": "2026-02-28T06:31:39.851791"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Code Result (Level 2)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:39.853",
+    "timestamp": "2026-02-28T06:31:39.853908"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "error",
+    "label": "Error at Level 2",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:39.866",
+    "timestamp": "2026-02-28T06:31:39.866252"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Executing Code (Level 3)",
+    "data": {
+      "code_preview": "import docker\nimport time\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_...",
+      "language": "python",
+      "node_id": "52540146"
+    },
+    "time": "06:31:46.953",
+    "timestamp": "2026-02-28T06:31:46.953281"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-52540146",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "import docker\nimport time\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_..."
+    },
+    "time": "06:31:46.955",
+    "timestamp": "2026-02-28T06:31:46.955644"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-52540146",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:31:48.145",
+    "timestamp": "2026-02-28T06:31:48.145971"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Code Result (Level 3)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:48.148",
+    "timestamp": "2026-02-28T06:31:48.148122"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "error",
+    "label": "Error at Level 3",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:31:48.160",
+    "timestamp": "2026-02-28T06:31:48.160643"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Executing Code (Level 4)",
+    "data": {
+      "code_preview": "import docker\nimport time\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_...",
+      "language": "python",
+      "node_id": "062174e8"
+    },
+    "time": "06:32:02.729",
+    "timestamp": "2026-02-28T06:32:02.729431"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-062174e8",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "import docker\nimport time\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_..."
+    },
+    "time": "06:32:02.731",
+    "timestamp": "2026-02-28T06:32:02.731901"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-062174e8",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:32:03.886",
+    "timestamp": "2026-02-28T06:32:03.886741"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Code Result (Level 4)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:32:03.888",
+    "timestamp": "2026-02-28T06:32:03.888625"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "error",
+    "label": "Error at Level 4",
+    "data": {
+      "error_type": "unknown",
+      "error_message": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:32:03.901",
+    "timestamp": "2026-02-28T06:32:03.901182"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Executing Code (Level 5)",
+    "data": {
+      "code_preview": "import docker\nimport time\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_...",
+      "language": "python",
+      "node_id": "01cf8d14"
+    },
+    "time": "06:32:19.108",
+    "timestamp": "2026-02-28T06:32:19.108206"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "process",
+    "label": "Starting Pod",
+    "data": {
+      "container": "test_user-testproject1-pod-01cf8d14",
+      "image": "python:3-alpine",
+      "work_dir": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1",
+      "keep_running": true,
+      "code_preview": "import docker\nimport time\n\nclient = docker.from_env()\n\ncontainer = client.containers.get(\"container_..."
+    },
+    "time": "06:32:19.110",
+    "timestamp": "2026-02-28T06:32:19.110560"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Pod Running",
+    "data": {
+      "container": "test_user-testproject1-pod-01cf8d14",
+      "keep_running": true,
+      "exit_code": 255
+    },
+    "time": "06:32:20.255",
+    "timestamp": "2026-02-28T06:32:20.255033"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Code Result (Level 5)",
+    "data": {
+      "exit_code": 255,
+      "success": false,
+      "podman_missing": false,
+      "result_preview": "Error: can only create exec sessions on running containers: container state improper\n"
+    },
+    "time": "06:32:20.256",
+    "timestamp": "2026-02-28T06:32:20.256484"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "All Pods Destroyed",
+    "data": {
+      "total_containers": 1,
+      "note": "All podman containers have been removed"
+    },
+    "time": "06:32:20.268",
+    "timestamp": "2026-02-28T06:32:20.268733"
+  },
+  {
+    "trace_id": "20260228_063058_161415",
+    "type": "output",
+    "label": "Looper Complete",
+    "data": {
+      "total_commands": 1,
+      "successful": 0,
+      "failed": 1,
+      "response": "**Command 1:**\n```\nls\n```\n\u274c Failed: Error: can only create exec sessions on running containers: container state improper\n\n\n    \u2514\u2500 Attempt 1: \u274c Failed\nError: can only create exec sessions on running co"
+    },
+    "time": "06:32:20.270",
+    "timestamp": "2026-02-28T06:32:20.270102"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "input",
+    "label": "User Prompt",
+    "data": "sudo ss -tulpn | grep :8080",
+    "time": "06:58:00.408",
+    "timestamp": "2026-02-28T06:58:00.408612"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Starting Tree Looper",
+    "data": {
+      "model": "MiniMax-M2.5",
+      "project": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1"
+    },
+    "time": "06:58:00.410",
+    "timestamp": "2026-02-28T06:58:00.410839"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Project Requirements",
+    "data": {
+      "exists": true,
+      "created": false,
+      "path": "/home/aeli/projects/aelilobster/user_login/test_user/testproject1/requirements.txt",
+      "message": "Found requirements.txt"
+    },
+    "time": "06:58:00.425",
+    "timestamp": "2026-02-28T06:58:00.425520"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Project Files",
+    "data": {
+      "count": 1,
+      "files": [
+        "requirements.txt"
+      ]
+    },
+    "time": "06:58:00.427",
+    "timestamp": "2026-02-28T06:58:00.427760"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Calling LLM for Commands",
+    "data": {
+      "prompt": "sudo ss -tulpn | grep :8080"
+    },
+    "time": "06:58:00.429",
+    "timestamp": "2026-02-28T06:58:00.429795"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "output",
+    "label": "LLM Response",
+    "data": {
+      "length": 487,
+      "preview": "```shell\nsudo ss -tulpn | grep :8080\n```\n\nThis command shows TCP/UDP sockets listening on port 8080, with process info. Let me execute it:\n\n```bash\nsudo ss -tulpn | grep :8080\n```\n\nWait, I should run "
+    },
+    "time": "06:58:04.668",
+    "timestamp": "2026-02-28T06:58:04.668992"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Extracted Commands",
+    "data": {
+      "count": 5
+    },
+    "time": "06:58:04.671",
+    "timestamp": "2026-02-28T06:58:04.671668"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "sudo ss -tulpn | grep :8080",
+      "language": "shell",
+      "node_id": "4814297e"
+    },
+    "time": "06:58:04.686",
+    "timestamp": "2026-02-28T06:58:04.686854"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Pod Status",
+    "data": {
+      "pod_name": "test_user-testproject1-pod",
+      "ready": false,
+      "running": false,
+      "action": "start_failed",
+      "message": "Failed to start pod: Error: unable to start container \"563a99268f859713f09f2eb6de4c4906f7e4af7afadbc297cfb6c8a62b190b7c\": pasta failed with exit code 1:\nFailed to bind port 8080 (Address already in use) for option '-t 8080-8080:8080-8080'\n\n"
+    },
+    "time": "06:58:04.865",
+    "timestamp": "2026-02-28T06:58:04.865851"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "sudo ss -tulpn | grep :8080",
+      "language": "bash",
+      "node_id": "9749b401"
+    },
+    "time": "06:58:04.868",
+    "timestamp": "2026-02-28T06:58:04.868163"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Pod Status",
+    "data": {
+      "pod_name": "test_user-testproject1-pod",
+      "ready": false,
+      "running": false,
+      "action": "start_failed",
+      "message": "Failed to start pod: Error: unable to start container \"563a99268f859713f09f2eb6de4c4906f7e4af7afadbc297cfb6c8a62b190b7c\": pasta failed with exit code 1:\nFailed to bind port 8080 (Address already in use) for option '-t 8080-8080:8080-8080'\n\n"
+    },
+    "time": "06:58:05.042",
+    "timestamp": "2026-02-28T06:58:05.042353"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "sudo ss -tulpn | grep :8080",
+      "language": "bash",
+      "node_id": "4b48423e"
+    },
+    "time": "06:58:05.043",
+    "timestamp": "2026-02-28T06:58:05.043888"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Pod Status",
+    "data": {
+      "pod_name": "test_user-testproject1-pod",
+      "ready": false,
+      "running": false,
+      "action": "start_failed",
+      "message": "Failed to start pod: Error: unable to start container \"563a99268f859713f09f2eb6de4c4906f7e4af7afadbc297cfb6c8a62b190b7c\": pasta failed with exit code 1:\nFailed to bind port 8080 (Address already in use) for option '-t 8080-8080:8080-8080'\n\n"
+    },
+    "time": "06:58:05.218",
+    "timestamp": "2026-02-28T06:58:05.218217"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "This command shows TCP/UDP sockets listening on port 8080, with process info. Let me execute it:",
+      "language": "shell",
+      "node_id": "0e28c8aa"
+    },
+    "time": "06:58:05.220",
+    "timestamp": "2026-02-28T06:58:05.220154"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Pod Status",
+    "data": {
+      "pod_name": "test_user-testproject1-pod",
+      "ready": false,
+      "running": false,
+      "action": "start_failed",
+      "message": "Failed to start pod: Error: unable to start container \"563a99268f859713f09f2eb6de4c4906f7e4af7afadbc297cfb6c8a62b190b7c\": pasta failed with exit code 1:\nFailed to bind port 8080 (Address already in use) for option '-t 8080-8080:8080-8080'\n\n"
+    },
+    "time": "06:58:05.369",
+    "timestamp": "2026-02-28T06:58:05.369623"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Executing Code (Level 0)",
+    "data": {
+      "code_preview": "Wait, I should run this directly. Let me execute it:",
+      "language": "shell",
+      "node_id": "f95472f9"
+    },
+    "time": "06:58:05.372",
+    "timestamp": "2026-02-28T06:58:05.372103"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "process",
+    "label": "Pod Status",
+    "data": {
+      "pod_name": "test_user-testproject1-pod",
+      "ready": false,
+      "running": false,
+      "action": "start_failed",
+      "message": "Failed to start pod: Error: unable to start container \"563a99268f859713f09f2eb6de4c4906f7e4af7afadbc297cfb6c8a62b190b7c\": pasta failed with exit code 1:\nFailed to bind port 8080 (Address already in use) for option '-t 8080-8080:8080-8080'\n\n"
+    },
+    "time": "06:58:05.541",
+    "timestamp": "2026-02-28T06:58:05.541273"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "output",
+    "label": "All Pods Destroyed",
+    "data": {
+      "total_containers": 5,
+      "note": "All podman containers have been removed"
+    },
+    "time": "06:58:05.542",
+    "timestamp": "2026-02-28T06:58:05.542954"
+  },
+  {
+    "trace_id": "20260228_065800_390498",
+    "type": "output",
+    "label": "Looper Complete",
+    "data": {
+      "total_commands": 5,
+      "successful": 0,
+      "failed": 5,
+      "response": "**Command 1:**\n```\nsudo ss -tulpn | grep :8080\n```\n\u274c Failed: Pod not ready: Failed to start pod: Error: unable to start container \"563a99268f859713f09f2eb6de4c4906f7e4af7afadbc297cfb6c8a62b190b7c\": pa"
+    },
+    "time": "06:58:05.544",
+    "timestamp": "2026-02-28T06:58:05.544361"
+  }
+]

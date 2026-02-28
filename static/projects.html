@@ -40,14 +40,6 @@
                         <span class="user-name">test_user</span>
                     </div>
                     
-                    <!-- Project Selector -->
-                    <div class="form-group">
-                        <label>Select Project</label>
-                        <select id="headerProject" class="form-select">
-                            <option value="">Select Project</option>
-                        </select>
-                    </div>
-                    
                     <!-- Add New Project Form -->
                     <div class="add-project-form">
                         <div class="form-group">
@@ -65,18 +57,13 @@
                     </div>
 
                     <!-- Projects List -->
+                    <h3>Projects</h3>
                     <div id="projectsList" class="projects-list" style="flex: 1; overflow-y: auto;">
                         <!-- Projects will be rendered here -->
                     </div>
                     
                     <div id="statusMessage" class="config-status" style="display: none;"></div>
                     
-                    <!-- Standalone Pods Section -->
-                    <div class="pods-section">
-                        <h4>Project Pods</h4>
-                        <button class="save-button" id="showPodsBtnGlobal" style="width: 100%;">Show Running Pods</button>
-                        <div id="globalPodsContainer" style="margin-top: 12px;"></div>
-                    </div>
                 </div>
 
                 <!-- Right: Project Settings -->
@@ -94,13 +81,9 @@
                             <button class="save-button" id="saveSettingsBtn">Save Settings</button>
                         </div>
                         
-                        <!-- Pod Management Section -->
-                        <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
-                            <h4>Project Pods</h4>
-                            <button class="save-button" id="showPodsBtn" style="width: 100%;">Show Running Pods</button>
-                            <div id="podsContainer" style="margin-top: 12px;">
-                                <!-- Pods will be rendered here -->
-                            </div>
+                        <!-- Dynamic Content Container (Pods or Context Files) -->
+                        <div id="dynamicContentContainer" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
+                            <!-- Dynamic content will be rendered here -->
                         </div>
                     </div>
                     <div id="noProjectSelected" style="padding: 40px; text-align: center; color: var(--text-secondary);">

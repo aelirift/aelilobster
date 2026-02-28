@@ -165,6 +165,93 @@ body {
     border-color: var(--accent);
 }
 
+/* Mode Toggle */
+.mode-toggle-container {
+    margin: 0 16px;
+    display: flex;
+    align-items: center;
+}
+
+.mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.mode-toggle:hover {
+    background: var(--bg-hover);
+}
+
+.mode-toggle.terminal-mode {
+    border-color: #fd7e14;
+    background: rgba(253, 126, 20, 0.15);
+    color: #fd7e14;
+}
+
+.mode-toggle.terminal-mode .mode-icon {
+    color: #fd7e14;
+}
+
+.mode-icon {
+    font-size: 16px;
+}
+
+.mode-label {
+    font-weight: 600;
+}
+
+/* Terminal mode styles */
+.chat-container.terminal-mode {
+    background: #1a1a1a;
+}
+
+.chat-container.terminal-mode .chat-messages {
+    background: #0d0d0d;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+/* Terminal user message (command) */
+.chat-container.terminal-mode .message.user {
+    background: transparent;
+    padding: 2px 0;
+}
+
+.chat-container.terminal-mode .message.user .message-content {
+    color: #4ade80;
+    font-family: 'Courier New', monospace;
+}
+
+/* Terminal assistant message (output) */
+.chat-container.terminal-mode .message.assistant {
+    background: transparent;
+    padding: 2px 0;
+}
+
+.chat-container.terminal-mode .message.assistant .message-content {
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* Terminal system message */
+.chat-container.terminal-mode .message.system {
+    background: rgba(253, 126, 20, 0.1);
+    border-left: 3px solid #fd7e14;
+    padding: 8px 12px;
+    margin: 8px 0;
+}
+
 /* Chat Header (Frozen) */
 .chat-header {
     display: flex;
@@ -1102,12 +1189,13 @@ body {
 }
 
 .project-action-btn {
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: 4px;
     border: none;
-    font-size: 12px;
+    font-size: 16px;
     cursor: pointer;
     transition: all 0.2s ease;
+    min-width: 36px;
 }
 
 .use-btn {
