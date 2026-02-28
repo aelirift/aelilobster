@@ -114,11 +114,36 @@ class TerminalSession:
             last_output_time = start_time
             prompt_patterns = ['$ ', '# ', '> ', 'aeli@', '~# ', '~% ']
             
+            # Password prompt patterns
+            password_patterns = [
+                '[sudo] password',
+                'password:',
+                'Password:',
+                'enter password',
+                'Enter password',
+                'SSH password',
+                'passphrase:',
+                'Passphrase:'
+            ]
+            
             while time.time() - start_time < timeout:
                 output = self._read_output(timeout=0.2)
                 
                 if output:
                     last_output_time = time.time()
+                    
+                    # Check for password prompt
+                    for pwd_pattern in password_patterns:
+                        if pwd_pattern.lower() in output.lower():
+                            # Password prompt detected!
+                            return {
+                                "success": False,
+                                "output": self.output_buffer.strip(),
+                                "exit_code": -1,
+                                "waiting_for_input": True,
+                                "password_prompt": True,
+                                "session_id": self.session_id
+                            }
                 
                 # Check if we have a prompt (command finished)
                 # Look for prompt at the end of output

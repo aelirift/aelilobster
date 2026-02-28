@@ -851,6 +851,7 @@ async def reset_pod_by_name(pod_name: str):
 # =============================================================================
 import uuid
 from services import terminal as terminal_service
+from services import secrets as secrets_service
 
 
 class TerminalStartRequest(BaseModel):
@@ -930,6 +931,81 @@ async def close_terminal(session_id: str):
     )
     
     return result
+
+
+# =============================================================================
+# Project Secrets API
+# =============================================================================
+
+class SecretCreateRequest(BaseModel):
+    name: str
+    value: str
+    tags: Optional[List[str]] = []
+
+
+class SecretUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    value: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+@app.get("/api/projects/{project_id}/secrets")
+async def get_project_secrets(project_id: str):
+    """Get all secrets for a project (without values)."""
+    secrets = secrets_service.get_secrets(project_id)
+    return {"success": True, "secrets": secrets}
+
+
+@app.post("/api/projects/{project_id}/secrets")
+async def create_project_secret(project_id: str, request: SecretCreateRequest):
+    """Create a new secret for a project."""
+    result = secrets_service.create_secret(
+        project_id=project_id,
+        name=request.name,
+        value=request.value,
+        tags=request.tags
+    )
+    # Never log the secret value
+    trace_logger.add(
+        "secret_create",
+        "Secret Created",
+        {"project_id": project_id, "name": request.name, "tags": request.tags}
+    )
+    return result
+
+
+@app.put("/api/projects/{project_id}/secrets/{secret_id}")
+async def update_project_secret(project_id: str, secret_id: str, request: SecretUpdateRequest):
+    """Update a secret."""
+    # Don't log the value
+    result = secrets_service.update_secret(
+        project_id=project_id,
+        secret_id=secret_id,
+        name=request.name,
+        value=request.value,
+        tags=request.tags
+    )
+    if result.get("success"):
+        trace_logger.add(
+            "secret_update",
+            "Secret Updated",
+            {"project_id": project_id, "secret_id": secret_id, "name": request.name}
+        )
+    return result
+
+
+@app.delete("/api/projects/{project_id}/secrets/{secret_id}")
+async def delete_project_secret(project_id: str, secret_id: str):
+    """Delete a secret."""
+    result = secrets_service.delete_secret(project_id, secret_id)
+    if result.get("success"):
+        trace_logger.add(
+            "secret_delete",
+            "Secret Deleted",
+            {"project_id": project_id, "secret_id": secret_id}
+        )
+    return result
+
 
 # =============================================================================
 # Main Entry Point

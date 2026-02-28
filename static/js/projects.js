@@ -260,6 +260,9 @@ async function showProjectSettings(projectId, projectName) {
     // Render context file dropdowns
     renderContextSettings();
     
+    // Load secrets list
+    loadProjectSecrets(projectId);
+    
     // Clear dynamic content
     dynamicContentContainer.innerHTML = '';
 }
@@ -786,6 +789,184 @@ async function startProjectPodByNameFromPanel(projectId) {
         dynamicContentContainer.innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
     }
 }
+
+// =============================================================================
+// Project Secrets Functions
+// =============================================================================
+
+// Load and display secrets for current project
+async function loadProjectSecrets(projectId) {
+    const container = document.getElementById('secretsListContainer');
+    if (!container) return;
+    
+    if (!projectId) {
+        container.innerHTML = '<p style="color: var(--text-secondary);">No project selected</p>';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/projects/${projectId}/secrets`);
+        const data = await response.json();
+        
+        if (data.success && data.secrets && data.secrets.length > 0) {
+            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            data.secrets.forEach(secret => {
+                const tagsHtml = secret.tags && secret.tags.length > 0 
+                    ? secret.tags.map(t => `<span style="background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">${escapeHtml(t)}</span>`).join('')
+                    : '';
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                        <div>
+                            <strong>${escapeHtml(secret.name)}</strong>
+                            ${tagsHtml}
+                        </div>
+                        <div>
+                            <button class="btn-small" onclick="editSecret('${secret.id}')" style="background: #ffc107; color: #000; margin-right: 4px;">Edit</button>
+                            <button class="btn-small" onclick="deleteSecret('${secret.id}')" style="background: #dc3545;">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p style="color: var(--text-secondary);">No secrets yet. Click "Add Secret" to create one.</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p style="color: red;">Error loading secrets: ' + error.message + '</p>';
+    }
+}
+
+// Show add/edit secret modal
+function showSecretModal(secretId = null, secretName = '', secretValue = '', secretTags = '') {
+    const container = document.getElementById('secretsListContainer');
+    const isEdit = secretId !== null;
+    
+    container.innerHTML = `
+        <div style="background: var(--bg-secondary); padding: 16px; border-radius: 8px; margin-top: 8px;">
+            <h4 style="margin: 0 0 12px 0;">${isEdit ? 'Edit Secret' : 'Add New Secret'}</h4>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="secretName" placeholder="e.g., SSH_KEY, API_TOKEN" value="${escapeHtml(secretName)}">
+            </div>
+            <div class="form-group">
+                <label>Value</label>
+                <input type="password" id="secretValue" placeholder="Secret value (will be encrypted)" value="${escapeHtml(secretValue)}">
+            </div>
+            <div class="form-group">
+                <label>Tags (comma-separated)</label>
+                <input type="text" id="secretTags" placeholder="e.g., ssh, production, server1" value="${escapeHtml(secretTags)}">
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="save-button" onclick="saveSecret('${secretId || ''}')">${isEdit ? 'Update' : 'Create'}</button>
+                <button class="btn-small" onclick="loadProjectSecrets(editingProjectId)" style="background: #6c757d;">Cancel</button>
+            </div>
+        </div>
+    `;
+}
+
+// Save secret (create or update)
+async function saveSecret(secretId) {
+    const name = document.getElementById('secretName').value.trim();
+    const value = document.getElementById('secretValue').value;
+    const tagsStr = document.getElementById('secretTags').value.trim();
+    const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+    
+    if (!name) {
+        alert('Secret name is required');
+        return;
+    }
+    
+    // Don't require value on edit if not changing
+    const isEdit = secretId !== '';
+    if (!isEdit && !value) {
+        alert('Secret value is required');
+        return;
+    }
+    
+    try {
+        let response;
+        if (isEdit) {
+            // Update - only include value if changed
+            const updateData = { name };
+            if (value) updateData.value = value;
+            if (tags.length > 0) updateData.tags = tags;
+            
+            response = await fetch(`/api/projects/${editingProjectId}/secrets/${secretId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateData)
+            });
+        } else {
+            // Create
+            response = await fetch(`/api/projects/${editingProjectId}/secrets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, value, tags })
+            });
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadProjectSecrets(editingProjectId);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to save secret'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Edit secret - load values
+async function editSecret(secretId) {
+    // Get the secret list first to find the name and tags
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/secrets`);
+        const data = await response.json();
+        
+        if (data.success && data.secrets) {
+            const secret = data.secrets.find(s => s.id === secretId);
+            if (secret) {
+                showSecretModal(secretId, secret.name, '', secret.tags.join(', '));
+            }
+        }
+    } catch (error) {
+        alert('Error loading secret: ' + error.message);
+    }
+}
+
+// Delete secret
+async function deleteSecret(secretId) {
+    if (!confirm('Are you sure you want to delete this secret? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/projects/${editingProjectId}/secrets/${secretId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            loadProjectSecrets(editingProjectId);
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete secret'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+// Show secrets button handler
+document.getElementById('showSecretsBtn')?.addEventListener('click', () => {
+    if (editingProjectId) {
+        loadProjectSecrets(editingProjectId);
+    } else {
+        alert('Please select a project first');
+    }
+});
 
 // Event listeners
 createProjectBtn.addEventListener('click', createProject);

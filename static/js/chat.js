@@ -48,7 +48,22 @@ let traceEntries = []; // Store trace entries for session persistence
 let terminalMode = false;
 let terminalSessionId = null;
 let terminalWaitingForInput = false;
+let terminalWaitingForPassword = false;
 let chatMode = true; // true = conversation mode, false = terminal mode
+
+// Set password input mode (hide typed characters)
+function setPasswordInputMode(enabled) {
+    terminalWaitingForPassword = enabled;
+    if (enabled) {
+        messageInput.type = 'password';
+        messageInput.placeholder = 'Password (hidden)...';
+        messageInput.style.borderColor = '#ff6b6b'; // Red border for password
+    } else {
+        messageInput.type = 'text';
+        messageInput.placeholder = 'Type command...';
+        messageInput.style.borderColor = '#fd7e14'; // Orange border for terminal
+    }
+}
 
 // Load saved mode from localStorage
 function loadSavedMode() {
@@ -161,6 +176,7 @@ async function exitTerminalMode() {
         terminalMode = false;
         terminalSessionId = null;
         terminalWaitingForInput = false;
+        setPasswordInputMode(false); // Reset password input mode
         
         // Update UI
         const modeToggle = document.getElementById('modeToggle');
@@ -230,11 +246,23 @@ async function sendTerminalCommand(command) {
         if (data.waiting_for_input) {
             // Command is waiting for interactive input
             terminalWaitingForInput = true;
-            messages.push({
-                role: 'system',
-                content: '⏳ ' + stripAnsiCodes(data.output) + '\n\nWaiting for input...',
-                type: 'terminal-waiting'
-            });
+            
+            // Check if this is a password prompt
+            if (data.password_prompt) {
+                setPasswordInputMode(true);
+                messages.push({
+                    role: 'system',
+                    content: '🔐 ' + stripAnsiCodes(data.output) + '\n\nEnter password (hidden)...',
+                    type: 'terminal-waiting'
+                });
+            } else {
+                setPasswordInputMode(false);
+                messages.push({
+                    role: 'system',
+                    content: '⏳ ' + stripAnsiCodes(data.output) + '\n\nWaiting for input...',
+                    type: 'terminal-waiting'
+                });
+            }
         } else {
             // Command completed - just show output, don't repeat command
             terminalWaitingForInput = false;
@@ -269,10 +297,14 @@ async function sendTerminalInput(input) {
         const data = await response.json();
         
         terminalWaitingForInput = false;
+        const isPassword = terminalWaitingForPassword;
+        setPasswordInputMode(false);
         
+        // Show obfuscated input for passwords
+        const displayInput = isPassword ? '••••••••' : input;
         messages.push({
             role: 'system',
-            content: '> ' + input,
+            content: '> ' + displayInput,
             type: 'terminal-input'
         });
         
