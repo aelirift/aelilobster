@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agents</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body { overflow: auto; }
+        .agents-page { display: flex; flex-direction: column; padding: 24px; height: calc(100vh - 40px); gap: 20px; }
+        .agents-header { display: flex; justify-content: space-between; align-items: center; }
+        .agents-header h2 { margin: 0; font-size: 20px; font-weight: 600; }
+        .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; overflow-y: auto; flex: 1; padding-bottom: 20px; }
+
+        /* Agent Card */
+        .agent-card { background: var(--bg-secondary); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: all 0.25s ease; }
+        .agent-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .agent-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .agent-name { font-size: 16px; font-weight: 600; margin: 0; }
+        .agent-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+        .agent-status.active { background: rgba(76, 175, 80, 0.15); color: #66bb6a; }
+        .agent-status.idle { background: rgba(255, 193, 7, 0.15); color: #ffca28; }
+        .agent-status.offline { background: rgba(158, 158, 158, 0.15); color: #9e9e9e; }
+        .agent-status-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .agent-status.active .agent-status-dot { background: #66bb6a; }
+        .agent-status.idle .agent-status-dot { background: #ffca28; }
+        .agent-status.offline .agent-status-dot { background: #9e9e9e; }
+        .agent-role { font-size: 12px; color: var(--text-secondary); margin: 0; }
+        .agent-description { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0; flex: 1; }
+        .agent-card-actions { display: flex; gap: 8px; margin-top: auto; }
+        .agent-card-actions button { flex: 1; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s; }
+        .btn-edit { background: rgba(var(--accent-rgb, 255, 107, 157), 0.15); color: var(--accent); }
+        .btn-edit:hover { background: rgba(var(--accent-rgb, 255, 107, 157), 0.3); }
+        .btn-delete { background: rgba(244, 67, 54, 0.12); color: #ef5350; }
+        .btn-delete:hover { background: rgba(244, 67, 54, 0.25); }
+
+        /* Add Agent Button */
+        .add-agent-btn { padding: 10px 20px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+        .add-agent-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+        /* Empty State */
+        .agents-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 12px; color: var(--text-secondary); }
+        .agents-empty svg { width: 56px; height: 56px; opacity: 0.3; }
+        .agents-empty p { font-size: 14px; margin: 0; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: var(--bg-primary); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 28px; width: 100%; max-width: 460px; }
+        .modal h3 { margin: 0 0 20px; font-size: 18px; }
+        .modal .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+        .modal .form-group label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+        .modal .form-group input,
+        .modal .form-group select,
+        .modal .form-group textarea { padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; font-family: inherit; }
+        .modal .form-group textarea { min-height: 80px; resize: vertical; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .modal-actions button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; }
+        .btn-cancel { background: var(--bg-secondary); color: var(--text-primary); }
+        .btn-save { background: var(--accent); color: white; }
+        .btn-save:hover { filter: brightness(1.15); }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Navigation -->
+        <div id="leftNaviContainer" data-current-page="agents"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="agents-page">
+                <div class="agents-header">
+                    <h2>Agents</h2>
+                    <button class="add-agent-btn" id="addAgentBtn">+ New Agent</button>
+                </div>
+                <div class="agents-grid" id="agentsGrid">
+                    <!-- Agents rendered by JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Agent Modal -->
+    <div class="modal-overlay" id="agentModal">
+        <div class="modal">
+            <h3 id="modalTitle">New Agent</h3>
+            <input type="hidden" id="agentId">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="agentName" placeholder="e.g. Code Reviewer">
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <select id="agentRole">
+                    <option value="assistant">Assistant</option>
+                    <option value="coder">Coder</option>
+                    <option value="reviewer">Reviewer</option>
+                    <option value="researcher">Researcher</option>
+                    <option value="tester">Tester</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="agentStatus">
+                    <option value="active">Active</option>
+                    <option value="idle">Idle</option>
+                    <option value="offline">Offline</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="agentDescription" placeholder="What does this agent do?"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" id="modalCancel">Cancel</button>
+                <button class="btn-save" id="modalSave">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/left_navi_panel.js"></script>
+    <script src="/static/js/agents.js"></script>
+</body>
+</html>
