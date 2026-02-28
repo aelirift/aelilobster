@@ -7,8 +7,9 @@ import os
 import uuid
 import re
 import time
+import random
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from services.naming import get_pod_name_normalized
 
@@ -24,11 +25,71 @@ DEFAULT_POD_SETTINGS = {
     "default_port": 8080
 }
 
+# Track allocated ports in memory
+_allocated_ports: Dict[str, int] = {}  # pod_name -> port
+
+
+def get_allocated_port(pod_name: str) -> Optional[int]:
+    """Get the allocated port for a pod."""
+    return _allocated_ports.get(pod_name)
+
+
+def allocate_port(pod_name: str, preferred_port: int = 8080) -> int:
+    """
+    Allocate a port for a pod. 
+    If preferred port is available, use it. Otherwise find a random available port.
+    """
+    # First check if this pod already has a port
+    if pod_name in _allocated_ports:
+        return _allocated_ports[pod_name]
+    
+    # Check if preferred port is available
+    if _is_port_available(preferred_port):
+        _allocated_ports[pod_name] = preferred_port
+        return preferred_port
+    
+    # Try to find a random available port in the range 8081-8180
+    tried = set()
+    for _ in range(20):  # Try 20 times
+        port = random.randint(8081, 8180)
+        if port not in tried and _is_port_available(port):
+            _allocated_ports[pod_name] = port
+            return port
+        tried.add(port)
+    
+    # Fallback: use preferred port anyway (let podman handle conflict)
+    _allocated_ports[pod_name] = preferred_port
+    return preferred_port
+
+
+def _is_port_available(port: int) -> bool:
+    """Check if a port is available by checking podman ps."""
+    try:
+        result = subprocess.run(
+            ['podman', 'ps', '--format', '{{.Ports}}'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        # Check if port is already mapped
+        for line in result.stdout.split('\n'):
+            if f':{port}->' in line or f':{port}/' in line:
+                return False
+        return True
+    except Exception:
+        return True  # Assume available if check fails
+
+
+def release_port(pod_name: str) -> None:
+    """Release the allocated port for a pod."""
+    if pod_name in _allocated_ports:
+        del _allocated_ports[pod_name]
+
 
 def get_pod_settings() -> Dict[str, Any]:
-    """Load pod settings from default_pod.md context file."""
+    """Load pod settings from default_pod_pod.md context file."""
     context_files_dir = Path(__file__).parent.parent / "context_files"
-    pod_settings_file = context_files_dir / "default_pod.md"
+    pod_settings_file = context_files_dir / "default_pod_pod.md"
     
     settings = DEFAULT_POD_SETTINGS.copy()
     
@@ -141,6 +202,10 @@ def kill_pod(user_name: str, project_name: str) -> Dict[str, Any]:
                 "verified": False,
                 "message": f"Failed to kill pod {pod_name}"
             }
+    
+    # Release the allocated port
+    release_port(pod_name)
+    print(f"[PORT] Released port for {pod_name}")
     
     return {
         "success": True,
@@ -311,6 +376,10 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
     else:
         work_dir = settings.get("work_dir", "/tmp")
     
+    # Allocate a port for this pod (uses 8080 if available, otherwise random)
+    allocated_port = allocate_port(container_name, settings.get("default_port", 8080))
+    print(f"[PORT] Allocated port {allocated_port} for {container_name}")
+    
     # Decide whether to keep pod running
     keep_running = settings.get("keep_running", True)
     auto_destroy = settings.get("auto_destroy", False)
@@ -395,7 +464,7 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
                     '--name', container_name,
                     '-v', f'{work_dir}:{work_dir}:Z',
                     '-w', work_dir,
-                    '-p', f"{settings.get('default_port', 8080)}:8080",
+                    '-p', f"{allocated_port}:8080",
                     image, 'tail', '-f', '/dev/null'
                 ])
                 
@@ -434,7 +503,7 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
                     '--name', container_name,
                     '-v', f'{work_dir}:{work_dir}:Z',
                     '-w', work_dir,
-                    '-p', f"{settings.get('default_port', 8080)}:8080",
+                    '-p', f"{allocated_port}:8080",
                     image, 'sh', '-c', cmd
                 ])
                 
@@ -451,7 +520,7 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
         port = detect_port(full_output)
         access_info = None
         if port:
-            access_info = f"Web server detected! Access at: http://localhost:{settings.get('default_port', 8080)} (port {port})"
+            access_info = f"Web server detected! Access at: http://localhost:{allocated_port} (port {port})"
         
         return {
             "output": full_output,
@@ -460,6 +529,7 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
             "access_info": access_info,
             "requirements_installed": requirements_installed,
             "container_name": container_name,
+            "allocated_port": allocated_port,
             "keep_running": keep_running,
             "pod_reused": pod_already_running or pod_exists
         }
@@ -486,6 +556,8 @@ def run_code_in_pod(code: str, project_path: str = None, user_name: str = None, 
         # Only cleanup if auto_destroy is true or keep_running is false
         if settings.get("auto_destroy", False) or not settings.get("keep_running", True):
             subprocess.run(['podman', 'kill', container_name], capture_output=True)
+            release_port(container_name)
+            print(f"[PORT] Released port for {container_name} (cleanup)")
 
 
 def run_shell_command(command: str, project_path: str = None) -> dict:

@@ -36,6 +36,20 @@ def load_projects() -> List[Dict[str, Any]]:
     return projects
 
 
+def get_user_projects(user: str) -> List[Dict[str, Any]]:
+    """
+    Load projects for a specific user only.
+    
+    Args:
+        user: The username to filter by
+    
+    Returns:
+        List of project dicts belonging to the user
+    """
+    all_projects = load_projects()
+    return [p for p in all_projects if p.get("user") == user]
+
+
 def create_project_folder(user: str, name: str) -> Dict[str, Any]:
     """
     Create a new project folder and its pod.
@@ -68,7 +82,7 @@ def create_project_folder(user: str, name: str) -> Dict[str, Any]:
     pod_result = start_pod(user, name, project_path)
     
     return {
-        "id": f"{user}_{name}",
+        "id": f"{user}-{name}",
         "name": name,
         "user": user,
         "path": str(project_dir),

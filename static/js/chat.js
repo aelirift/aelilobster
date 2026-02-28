@@ -65,28 +65,53 @@ function setPasswordInputMode(enabled) {
     }
 }
 
-// Load saved mode from localStorage
+// Save terminal session before page unload
+window.addEventListener('beforeunload', function() {
+    if (terminalMode) {
+        // Save state before closing
+        saveState();
+        console.log('[DEBUG] Page unloading, saved terminal mode');
+    }
+});
+
+// Restore terminal session after page load
+window.addEventListener('load', function() {
+    console.log('[DEBUG] Page loaded');
+});
+
+// Load saved mode from localStorage (project-specific)
 function loadSavedMode() {
-    const savedMode = localStorage.getItem('chatMode');
+    const projectSelect = document.getElementById('headerProject');
+    const projectId = projectSelect ? projectSelect.value : 'none';
+    const localProject = localStorage.getItem('selectedProject');
+    const modeKey = getProjectStorageKey('chatMode');
+    const savedMode = localStorage.getItem(modeKey);
+    
+    console.log('[DEBUG] loadSavedMode: projectSelect.value =', projectId);
+    console.log('[DEBUG] loadSavedMode: localStorage selectedProject =', localProject);
+    console.log('[DEBUG] loadSavedMode: modeKey =', modeKey);
     console.log('[DEBUG] loadSavedMode: savedMode =', savedMode);
+    
     if (savedMode === 'terminal') {
         chatMode = false;
         terminalMode = true;
     } else {
+        // Default to chat mode if nothing saved OR if explicitly saved as chat
         chatMode = true;
         terminalMode = false;
     }
-    console.log('[DEBUG] loadSavedMode: chatMode =', chatMode, 'terminalMode =', terminalMode);
+    console.log('[DEBUG] loadSavedMode: FINAL chatMode =', chatMode, 'terminalMode =', terminalMode);
 }
 
-// Save mode to localStorage
+// Save mode to localStorage (project-specific)
 function saveMode() {
+    const modeKey = getProjectStorageKey('chatMode');
     if (terminalMode) {
-        localStorage.setItem('chatMode', 'terminal');
+        localStorage.setItem(modeKey, 'terminal');
     } else {
-        localStorage.setItem('chatMode', 'chat');
+        localStorage.setItem(modeKey, 'chat');
     }
-    console.log('[DEBUG] saveMode: chatMode =', chatMode, 'terminalMode =', terminalMode);
+    console.log('[DEBUG] saveMode: modeKey =', modeKey, 'chatMode =', chatMode, 'terminalMode =', terminalMode);
 }
 
 // Strip ANSI color codes from terminal output
@@ -421,12 +446,14 @@ function clearTrace() {
 
 // Save trace entries to localStorage
 function saveTraceState() {
-    localStorage.setItem('chatTraceEntries', JSON.stringify(traceEntries));
+    const traceKey = getProjectStorageKey('traceEntries');
+    localStorage.setItem(traceKey, JSON.stringify(traceEntries));
 }
 
 // Load trace entries from localStorage
 function loadTraceState() {
-    const saved = localStorage.getItem('chatTraceEntries');
+    const traceKey = getProjectStorageKey('traceEntries');
+    const saved = localStorage.getItem(traceKey);
     if (saved) {
         try {
             traceEntries = JSON.parse(saved);
@@ -549,8 +576,18 @@ traceStop.addEventListener('click', async () => {
 
 // Load saved state from localStorage
 async function loadState() {
-    // Load saved chat mode first (before loading messages)
+    console.log('[DEBUG] loadState starting...');
+    
+    // First, load projects to ensure we have a valid project selected
+    // This must happen BEFORE loading saved mode, so we use the correct project-specific key
+    await loadProjects();
+    
+    // Now that we have a valid project, load the saved mode
     loadSavedMode();
+    
+    // Save mode to ensure it's persisted with the correct project key
+    saveMode();
+    console.log('[DEBUG] loadState: mode persisted, terminalMode =', terminalMode);
     
     // Update UI based on loaded mode
     const modeToggle = document.getElementById('modeToggle');
@@ -591,12 +628,16 @@ async function loadState() {
         modelSelect.value = savedModel;
     }
     
-    // Load messages appropriate for current mode
+    // Load messages appropriate for current mode (project-specific)
+    const chatKey = getProjectStorageKey('chatMessages');
+    const terminalKey = getProjectStorageKey('terminalMessages');
+    const traceKey = getProjectStorageKey('traceEntries');
+    
     let savedMessages;
     if (terminalMode) {
-        savedMessages = localStorage.getItem('terminalMessages');
+        savedMessages = localStorage.getItem(terminalKey);
     } else {
-        savedMessages = localStorage.getItem('chatMessages');
+        savedMessages = localStorage.getItem(chatKey);
     }
     if (savedMessages) {
         try {
@@ -604,6 +645,22 @@ async function loadState() {
             renderMessages();
         } catch (e) {
             messages = [];
+        }
+    }
+    
+    // Load trace entries (project-specific)
+    const savedTrace = localStorage.getItem(traceKey);
+    if (savedTrace) {
+        try {
+            traceEntries = JSON.parse(savedTrace);
+            // Re-render all trace entries
+            const traceContent = document.getElementById('traceContent');
+            if (traceContent) {
+                traceContent.innerHTML = '';
+                traceEntries.forEach(entry => renderTraceEntry(entry, true));
+            }
+        } catch (e) {
+            traceEntries = [];
         }
     }
     
@@ -660,9 +717,6 @@ async function loadState() {
         }
     }
     
-    // Load projects first, then set selected project after
-    await loadProjects();
-    
     // Update project selector state based on existing messages
     updateProjectSelectorState();
     
@@ -693,7 +747,22 @@ async function loadState() {
 // Load projects from API and return the projects list
 async function loadProjects() {
     try {
-        const response = await fetch('/api/projects');
+        // Get current user first
+        let currentUser = localStorage.getItem('currentUser');
+        if (!currentUser) {
+            try {
+                const userResponse = await fetch('/api/user');
+                const userData = await userResponse.json();
+                currentUser = userData.user || 'default';
+                localStorage.setItem('currentUser', currentUser);
+            } catch (e) {
+                console.log('[DEBUG] Could not get user from API, using default');
+                currentUser = 'default';
+            }
+        }
+        
+        // Fetch projects filtered by user
+        const response = await fetch(`/api/projects?user=${encodeURIComponent(currentUser)}`);
         const projects = await response.json();
         
         const projectSelect = document.getElementById('headerProject');
@@ -708,11 +777,15 @@ async function loadProjects() {
         
         // If no projects exist or none selected, auto-create one
         const savedProject = localStorage.getItem('selectedProject');
+        console.log('[DEBUG] loadProjects: savedProject =', savedProject);
+        console.log('[DEBUG] loadProjects: projects =', projects.map(p => p.id));
+        
         if (!savedProject || !projects.find(p => p.id === savedProject)) {
             if (projects.length > 0) {
                 // Use first available project
                 projectSelect.value = projects[0].id;
                 localStorage.setItem('selectedProject', projects[0].id);
+                console.log('[DEBUG] loadProjects: set to first project', projects[0].id);
             } else {
                 // Create a random project
                 console.log('[DEBUG] No projects found, creating one...');
@@ -721,7 +794,7 @@ async function loadProjects() {
                     const createResponse = await fetch('/api/projects', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: randomName })
+                        body: JSON.stringify({ name: randomName, user: currentUser })
                     });
                     const newProject = await createResponse.json();
                     if (newProject.id) {
@@ -733,7 +806,13 @@ async function loadProjects() {
                     console.error('Failed to create project:', e);
                 }
             }
+        } else {
+            // Saved project exists - set it
+            projectSelect.value = savedProject;
+            console.log('[DEBUG] loadProjects: set to savedProject', savedProject);
         }
+        
+        console.log('[DEBUG] loadProjects: FINAL projectSelect.value =', projectSelect.value);
         
         return projects;
     } catch (e) {
@@ -742,16 +821,80 @@ async function loadProjects() {
     }
 }
 
-// Save state to localStorage
+// Detect if the prompt is about code/command execution or just conversation
+// Returns true if it should go to looper (code execution), false for simple chat
+function isCodeRequest(prompt) {
+    const lower = prompt.toLowerCase().trim();
+    
+    // Linux command patterns
+    const linuxCommands = ['ls', 'cd', 'mkdir', 'rm', 'cp', 'mv', 'cat', 'grep', 'find', 'chmod', 'chown', 'tar', 'zip', 'unzip', 'curl', 'wget', 'git', 'npm', 'pip', 'python', 'node', 'java', 'gcc', 'make', 'docker', 'kubectl', 'sudo', 'apt', 'yum', 'yum', 'grep', 'awk', 'sed'];
+    
+    // Code-related keywords
+    const codeKeywords = [
+        'write code', 'create code', 'run code', 'execute code', 'debug code',
+        'fix code', 'improve code', 'refactor', 'function', 'class', 'method',
+        'python', 'javascript', 'java', 'c++', 'ruby', 'go', 'rust', 'php',
+        'code', 'script', 'program', 'algorithm', 'implement', 'compile',
+        'install', 'import', 'package', 'library', 'dependency',
+        'api', 'endpoint', 'function', 'loop', 'if', 'else', 'for', 'while',
+        'return', 'print', 'console.log', 'print_r', 'var', 'let', 'const',
+        'git', 'commit', 'push', 'pull', 'branch', 'merge',
+        'test', 'unit test', 'pytest', 'jest', 'unittest',
+        'error', 'bug', 'exception', 'traceback', 'stack',
+        'command', 'terminal', 'bash', 'shell', 'exec', 'run',
+        'pod', 'container', 'docker', 'kubernetes', 'podman',
+        'file', 'directory', 'folder', 'path', 'create', 'delete', 'remove'
+    ];
+    
+    // Check if it starts with a known Linux command
+    const firstWord = lower.split(' ')[0];
+    if (linuxCommands.includes(firstWord) || firstWord.startsWith('./') || firstWord.startsWith('/')) {
+        return true;
+    }
+    
+    // Check for code-related keywords
+    for (const keyword of codeKeywords) {
+        if (lower.includes(keyword)) {
+            return true;
+        }
+    }
+    
+    // Check for code blocks or programming syntax
+    if (lower.includes('```') || lower.includes('def ') || lower.includes('function ') || 
+        lower.includes('class ') || lower.includes('import ') || lower.includes('from ') ||
+        lower.includes('const ') || lower.includes('let ') || lower.includes('var ') ||
+        lower.includes('print(') || lower.includes('console.log') || lower.includes('return ')) {
+        return true;
+    }
+    
+    return false;
+}
+
+// Get project-specific storage key
+function getProjectStorageKey(baseKey) {
+    const projectSelect = document.getElementById('headerProject');
+    const projectId = projectSelect ? projectSelect.value : localStorage.getItem('selectedProject') || 'default';
+    return `${projectId}_${baseKey}`;
+}
+
+// Save state to localStorage (project-specific)
 function saveState() {
     localStorage.setItem('selectedModel', modelSelect.value);
     
+    // Get project-specific keys
+    const chatKey = getProjectStorageKey('chatMessages');
+    const terminalKey = getProjectStorageKey('terminalMessages');
+    const traceKey = getProjectStorageKey('traceEntries');
+    
     // Save messages to appropriate storage based on current mode
     if (terminalMode) {
-        localStorage.setItem('terminalMessages', JSON.stringify(messages));
+        localStorage.setItem(terminalKey, JSON.stringify(messages));
     } else {
-        localStorage.setItem('chatMessages', JSON.stringify(messages));
+        localStorage.setItem(chatKey, JSON.stringify(messages));
     }
+    
+    // Save trace entries
+    localStorage.setItem(traceKey, JSON.stringify(traceEntries));
     
     const projectSelect = document.getElementById('headerProject');
     if (projectSelect) {
@@ -985,19 +1128,44 @@ async function sendMessage() {
             traceEventSource.close();
         };
         
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prompt: content,
-                model: modelSelect.value,
-                messages: messages
-                    .filter(m => m.type !== 'command' && m.type !== 'terminal-command' && m.type !== 'terminal-output')
-                    .map(m => ({ role: m.role, content: m.content }))
-            })
-        });
+        // Detect if this is a code/command request or normal conversation
+        const useLooper = isCodeRequest(content);
+        
+        let response;
+        if (useLooper) {
+            // Code/command request - use looper for execution in pods
+            addTrace('process', 'Detected code request, using Looper', { prompt: content });
+            response = await fetch('/api/looper/run', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt: content,
+                    model: modelSelect.value,
+                    project_id: projectId,
+                    messages: messages
+                        .filter(m => m.type !== 'command' && m.type !== 'terminal-command' && m.type !== 'terminal-output')
+                        .map(m => ({ role: m.role, content: m.content }))
+                })
+            });
+        } else {
+            // Normal conversation - use simple chat endpoint (no code execution)
+            addTrace('process', 'Detected conversation, using LLM directly', { prompt: content });
+            response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt: content,
+                    model: modelSelect.value,
+                    messages: messages
+                        .filter(m => m.type !== 'command' && m.type !== 'terminal-command' && m.type !== 'terminal-output')
+                        .map(m => ({ role: m.role, content: m.content }))
+                })
+            });
+        }
         
         if (!response.ok) {
             // Close trace stream on error
@@ -1017,16 +1185,18 @@ async function sendMessage() {
         const loadingEl = document.getElementById(loadingId);
         if (loadingEl) loadingEl.remove();
         
-        // Handle simple chat response
-        if (data.output) {
+        // Handle looper response (also works for simple chat)
+        const responseText = data.response || data.output || '';
+        
+        if (responseText) {
             addTrace('output', 'LLM Response', {
                 model: data.model,
-                output_length: data.output.length
+                output_length: responseText.length
             });
             
             messages.push({
                 role: 'assistant',
-                content: data.output,
+                content: responseText,
                 type: 'chat'
             });
         } else if (data.error) {
@@ -1123,7 +1293,12 @@ modelSelect.addEventListener('change', saveState);
 // Project selection change - save
 const projectSelect = document.getElementById('headerProject');
 if (projectSelect) {
-    projectSelect.addEventListener('change', saveState);
+    projectSelect.addEventListener('change', function() {
+        // Save current project state before switching
+        saveState();
+        // Reload state for new project
+        loadState();
+    });
 }
 
 // Track when user scrolls up manually
@@ -1136,11 +1311,8 @@ messagesContainer.addEventListener('scroll', () => {
     }
 });
 
-// Load state on page load
+// Load state on page load (includes loading projects, mode, messages, and trace entries)
 loadState();
-
-// Load trace entries from localStorage on page load
-loadTraceState();
 
 // Focus input on load
 messageInput.focus();
