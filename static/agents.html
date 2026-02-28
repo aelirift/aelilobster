@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Pods</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            overflow: hidden;
+        }
+
+        /* ── Page wrapper ─────────────────────────────────────────── */
+        .agents-page {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* ── Hero Section ─────────────────────────────────────────── */
+        .hero {
+            padding: 48px 40px 32px;
+            background: linear-gradient(180deg, rgba(15, 52, 96, 0.55) 0%, var(--bg-primary) 100%);
+            flex-shrink: 0;
+        }
+
+        .hero h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .hero .subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+
+        .search-wrap {
+            max-width: 600px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .search-wrap input {
+            width: 100%;
+            padding: 12px 16px 12px 42px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .search-wrap input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .search-wrap input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-wrap svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            stroke: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-pill {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .filter-pill:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .filter-pill.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        /* ── Results Bar ──────────────────────────────────────────── */
+        .results-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 40px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .results-bar .count {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .results-bar select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* ── Card Grid ────────────────────────────────────────────── */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            padding: 24px 40px 40px;
+        }
+
+        @media (max-width: 1100px) {
+            .card-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 700px) {
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Pod Card ─────────────────────────────────────────────── */
+        .pod-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+
+        .pod-card:hover {
+            border-color: rgba(233, 69, 96, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        .pod-card:hover .mcp-icon {
+            filter: grayscale(0);
+            opacity: 1;
+        }
+
+        .card-accent {
+            height: 4px;
+            flex-shrink: 0;
+        }
+
+        .card-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            flex: 1;
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .pod-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .card-top-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+        }
+
+        .badge-popular {
+            background: rgba(255, 193, 7, 0.15);
+            color: #ffc107;
+        }
+
+        .badge-new {
+            background: rgba(76, 175, 80, 0.15);
+            color: #66bb6a;
+        }
+
+        .badge-official {
+            background: rgba(66, 165, 245, 0.15);
+            color: #42a5f5;
+        }
+
+        .badge-community {
+            background: rgba(171, 71, 188, 0.15);
+            color: #ab47bc;
+        }
+
+        .pod-name {
+            font-size: 17px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .pod-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin: 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 0;
+        }
+
+        .card-section-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .agent-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .agent-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .agent-chip-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .agent-chip-more {
+            opacity: 0.5;
+            border: none;
+        }
+
+        .mcp-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .mcp-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            filter: grayscale(1);
+            opacity: 0.6;
+            transition: all 0.3s;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .skill-tag {
+            padding: 3px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .card-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .inputs-info {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .inputs-info.needed {
+            color: #ffc107;
+        }
+
+        .inputs-info.ready {
+            color: #66bb6a;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-download {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-download:hover {
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+        }
+
+        .btn-connect {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            color: #fff;
+        }
+
+        .btn-connect:hover {
+            filter: brightness(1.2);
+        }
+
+        /* ── Empty / No results ───────────────────────────────────── */
+        .no-results {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 10px;
+            color: var(--text-secondary);
+            grid-column: 1 / -1;
+        }
+
+        .no-results.visible {
+            display: flex;
+        }
+
+        .no-results svg {
+            width: 56px;
+            height: 56px;
+            opacity: 0.3;
+            margin-bottom: 8px;
+        }
+
+        .no-results p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .no-results .clear-btn {
+            margin-top: 12px;
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .no-results .clear-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ── Side Drawer ──────────────────────────────────────────── */
+        .drawer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            backdrop-filter: blur(3px);
+        }
+
+        .drawer-overlay.open {
+            display: block;
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: -520px;
+            width: 500px;
+            max-width: 92vw;
+            height: 100vh;
+            background: var(--bg-primary);
+            border-left: 1px solid var(--border);
+            z-index: 201;
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s ease;
+        }
+
+        .drawer.open {
+            right: 0;
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .drawer-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .drawer-header-left .pod-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
+            border-radius: 10px;
+        }
+
+        .drawer-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .drawer-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .drawer-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .drawer-section h4 {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+
+        .drawer-field {
+            margin-bottom: 14px;
+        }
+
+        .drawer-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .drawer-field input,
+        .drawer-field textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .drawer-field textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .drawer-field input:focus,
+        .drawer-field textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .mcp-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .mcp-status-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .mcp-status-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .mcp-connected {
+            color: #66bb6a;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mcp-authorize-btn {
+            padding: 5px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .mcp-authorize-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .drawer-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .btn-launch {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-launch.disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        .btn-launch.ready {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-launch.ready:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-launch.launching {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        /* ── Toast ────────────────────────────────────────────────── */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 13px;
+            z-index: 300;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Left Navigation -->
+        <div id="leftNaviContainer" data-current-page="agents"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="agents-page" id="agentsPage">
+
+                <!-- Hero -->
+                <section class="hero">
+                    <h1>Agent Pods</h1>
+                    <p class="subtitle">Pre-configured AI teams ready to deploy. Connect your accounts, fill in a few
+                        details, and get to work immediately.</p>
+                    <div class="search-wrap">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="searchInput" placeholder="Search agent pods...">
+                    </div>
+                    <div class="filter-row" id="filterRow">
+                        <!-- rendered by JS -->
+                    </div>
+                </section>
+
+                <!-- Results Bar -->
+                <div class="results-bar">
+                    <span class="count" id="resultCount">Showing 0 Agent Pods</span>
+                    <select id="sortSelect">
+                        <option value="popular">Sort by: Popular</option>
+                        <option value="newest">Sort by: Newest</option>
+                        <option value="az">Sort by: A–Z</option>
+                    </select>
+                </div>
+
+                <!-- Card Grid -->
+                <div class="card-grid" id="cardGrid">
+                    <!-- rendered by JS -->
+                    <div class="no-results" id="noResults">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg>
+                        <p><strong>No agent pods match your search.</strong></p>
+                        <p style="font-size:12px;opacity:.6;">Try a different filter or browse all pods.</p>
+                        <button class="clear-btn" id="clearFiltersBtn">Clear Filters</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Connect & Launch Drawer -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="drawer" id="drawer">
+        <div class="drawer-header">
+            <div class="drawer-header-left">
+                <div class="pod-icon" id="drawerIcon"></div>
+                <h3 id="drawerTitle">Pod Name</h3>
+            </div>
+            <button class="drawer-close" id="drawerClose">×</button>
+        </div>
+        <div class="drawer-body" id="drawerBody">
+            <!-- populated by JS -->
+        </div>
+        <div class="drawer-footer">
+            <button class="btn-launch disabled" id="launchBtn">
+                <span id="launchLabel">🚀 Launch Pod</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script src="/static/js/left_navi_panel.js"></script>
+    <script src="/static/js/agents.js"></script>
+</body>
+
+</html>

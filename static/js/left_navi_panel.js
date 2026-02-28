@@ -22,6 +22,18 @@ function renderLeftNaviPanel(currentPage) {
             icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'
         },
         {
+            id: 'agents',
+            label: 'Agents',
+            href: '/agents.html',
+            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+        },
+        {
+            id: 'command',
+            label: 'Command Center',
+            href: '/command.html',
+            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><circle cx="12" cy="10" r="2"/></svg>'
+        },
+        {
             id: 'config',
             label: 'Context Files',
             href: '/files.html',
@@ -50,7 +62,7 @@ function renderLeftNaviPanel(currentPage) {
 }
 
 // Auto-render if there's a container with id 'leftNaviContainer'
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const container = document.getElementById('leftNaviContainer');
     if (container) {
         const currentPage = container.getAttribute('data-current-page') || 'chat';

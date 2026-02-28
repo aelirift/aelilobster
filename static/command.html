@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/command.css">
+</head>
+
+<body>
+
+    <button class="mob-toggle" id="mobToggle" title="Toggle sidebar">☰</button>
+
+    <div class="fleet-shell">
+
+        <!-- ═══════════ POD NAVIGATOR SIDEBAR ═══════════ -->
+        <aside class="pod-nav" id="podNav">
+            <div class="nav-top">
+                <button class="nav-fleet-btn active" id="fleetBtn" title="Fleet Overview">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                    </svg>
+                    <span class="nav-label">Fleet View</span>
+                </button>
+                <button class="nav-pin" id="navPin" title="Pin sidebar">📌</button>
+            </div>
+
+            <div class="nav-pods" id="navPods"><!-- JS --></div>
+
+            <div class="nav-bottom">
+                <button class="nav-btn accent" id="launchPodBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span class="nav-label">Launch New Pod</span>
+                </button>
+                <button class="nav-btn" id="orchBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 3 21 3 21 8" />
+                        <line x1="4" y1="20" x2="21" y2="3" />
+                        <polyline points="21 16 21 21 16 21" />
+                        <line x1="15" y1="15" x2="21" y2="21" />
+                        <line x1="4" y1="4" x2="9" y2="9" />
+                    </svg>
+                    <span class="nav-label">Orchestrate</span>
+                </button>
+                <div class="nav-health" id="navHealth"><!-- JS --></div>
+            </div>
+        </aside>
+
+        <!-- ═══════════ MAIN CANVAS ═══════════ -->
+        <div class="main-canvas">
+
+            <!-- ════════ FLEET VIEW ════════ -->
+            <div class="view active" id="fleetView">
+                <div class="fleet-header">
+                    <div class="fleet-header-left">
+                        <span class="fleet-title">Fleet Overview</span>
+                        <div class="fleet-stats" id="fleetStats"><!-- JS --></div>
+                    </div>
+                    <div class="fleet-controls">
+                        <button class="fleet-btn" id="pauseAllBtn">⏸ PAUSE ALL</button>
+                        <button class="fleet-btn" id="resumeAllBtn">▶ RESUME ALL</button>
+                        <button class="fleet-btn primary" id="broadcastBtn">📡 BROADCAST →</button>
+                    </div>
+                </div>
+                <div class="fleet-body">
+                    <div class="fleet-grid" id="fleetGrid"><!-- JS --></div>
+                    <div class="fleet-feed-header">
+                        <span class="fleet-feed-title">Fleet Activity Feed</span>
+                        <div class="feed-filters" id="feedFilters"><!-- JS --></div>
+                    </div>
+                    <div class="fleet-feed" id="fleetFeed"><!-- JS --></div>
+                </div>
+            </div>
+
+            <!-- ════════ POD VIEW ════════ -->
+            <div class="view" id="podView">
+                <div class="pv-header">
+                    <div class="pv-header-left">
+                        <button class="pv-back" id="pvBack" title="Back to Fleet">←</button>
+                        <div class="pv-breadcrumb"><a href="#" id="pvBcFleet">Fleet Overview</a> › <span class="current"
+                                id="pvBcPod">Pod</span></div>
+                        <span class="pv-status-pill running" id="pvStatusPill"><span class="dot"></span><span
+                                id="pvStatusLabel">RUNNING</span></span>
+                    </div>
+                    <div class="pv-header-meta" id="pvMeta"><!-- JS --></div>
+                    <div class="pv-header-right">
+                        <button class="fleet-btn" id="pvPauseBtn">⏸ PAUSE</button>
+                        <button class="fleet-btn" id="pvSettingsBtn">⚙ SETTINGS</button>
+                    </div>
+                </div>
+                <div class="pv-dep-bar" id="pvDepBar" style="display:none"><!-- JS --></div>
+
+                <!-- Mobile tabs -->
+                <div class="mobile-tabs" id="pvMobileTabs">
+                    <div class="mob-tab active" data-tab="left">Agents</div>
+                    <div class="mob-tab" data-tab="center">Command</div>
+                    <div class="mob-tab" data-tab="right">Log</div>
+                </div>
+
+                <!-- 3 col grid -->
+                <div class="cc-grid">
+                    <div class="cc-panel mobile-active" id="panelLeft">
+                        <div class="panel-header"><span class="panel-title">Agent Roster</span></div>
+                        <div class="roster-list" id="rosterList"></div>
+                    </div>
+                    <div class="cc-panel center-col" id="panelCenter">
+                        <div class="head-node-section">
+                            <div class="head-node-row">
+                                <div class="head-avatar" id="headAvatar">NEXUS</div>
+                                <div class="head-info">
+                                    <div class="head-name" id="headName">NEXUS</div>
+                                    <div class="head-role" id="headRole">Team Lead · Head Node</div>
+                                    <div class="head-status" id="headStatus">● ONLINE — AWAITING ORDERS</div>
+                                </div>
+                            </div>
+                            <div class="chat-history" id="chatHistory">
+                                <div class="chat-msg head">
+                                    <div class="msg-label">NEXUS</div>Pod initialized. All agents online and ready.
+                                    Awaiting your directive.
+                                </div>
+                            </div>
+                            <div class="chat-input-row">
+                                <input type="text" id="chatInput"
+                                    placeholder="Type a command for the Head Node... (@pod to cross-pod)">
+                                <button class="chat-send" id="chatSend">SEND</button>
+                            </div>
+                        </div>
+                        <div class="comms-section">
+                            <div class="comms-header">
+                                <span class="panel-title">Live Communications</span>
+                                <div class="comms-filters" id="commsFilters"></div>
+                            </div>
+                            <div class="comms-log" id="commsLog"></div>
+                        </div>
+                    </div>
+                    <div class="cc-panel right-col" id="panelRight">
+                        <div class="accom-section">
+                            <div class="panel-header"><span class="panel-title">Completed Tasks</span></div>
+                            <div class="accom-list" id="accomList"></div>
+                        </div>
+                        <div class="sched-section">
+                            <div class="panel-header">
+                                <span class="panel-title">Schedule</span>
+                                <button class="add-task-btn" id="addTaskBtn">+ ADD TASK</button>
+                            </div>
+                            <div class="sched-list" id="schedList"></div>
+                            <div class="add-task-form" id="addTaskForm">
+                                <div class="form-row">
+                                    <input type="time" id="newTaskTime" value="14:00">
+                                    <select id="newTaskAgent"></select>
+                                </div>
+                                <input type="text" id="newTaskDesc" placeholder="Task description...">
+                                <button class="add-task-confirm" id="confirmTask">SCHEDULE</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════════ ORCHESTRATION VIEW ════════ -->
+            <div class="view" id="orchestrationView">
+                <div class="orch-header">
+                    <div style="display:flex;align-items:center;gap:14px">
+                        <button class="pv-back" id="orchBack" title="Back to Fleet">←</button>
+                        <span class="orch-title">Cross-Pod Orchestration</span>
+                    </div>
+                    <div style="display:flex;gap:6px">
+                        <button class="fleet-btn" id="runPipeBtn">▶ RUN PIPELINE</button>
+                        <button class="fleet-btn" id="savePipeBtn">💾 SAVE PIPELINE</button>
+                    </div>
+                </div>
+                <div class="orch-body">
+                    <div class="orch-left">
+                        <div class="orch-section-title">Broadcast to Pods</div>
+                        <div class="broadcast-box">
+                            <input class="broadcast-input" id="broadcastInput"
+                                placeholder="Type a task to broadcast to multiple pods...">
+                            <div class="broadcast-pods" id="broadcastPods"><!-- JS --></div>
+                            <button class="fleet-btn primary" id="broadcastSendBtn">📡 BROADCAST</button>
+                        </div>
+                        <div class="orch-section-title">Pipeline Builder</div>
+                        <div class="pipeline-box" id="pipelineBox">
+                            <div id="pipelineSteps"><!-- JS --></div>
+                            <button class="pipe-add" id="pipeAddBtn">+ Add Step</button>
+                        </div>
+                    </div>
+                    <div class="orch-right">
+                        <div class="orch-section-title">Dependency Tracker</div>
+                        <table class="dep-table" id="depTable">
+                            <thead>
+                                <tr>
+                                    <th>Waiting On</th>
+                                    <th>Blocked Pod</th>
+                                    <th>Task</th>
+                                </tr>
+                            </thead>
+                            <tbody id="depTableBody"><!-- JS --></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /main-canvas -->
+    </div><!-- /fleet-shell -->
+
+    <!-- Alert Toast Stack -->
+    <div class="alert-stack" id="alertStack"></div>
+
+    <script src="/static/js/command.js"></script>
+</body>
+
+</html>

@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json
+import os
 import asyncio
 
 # =============================================================================
@@ -515,9 +516,82 @@ async def serve_files():
 async def serve_projects():
     return FileResponse("static/projects.html")
 
+@app.get("/agents.html")
+async def serve_agents():
+    return FileResponse("static/agents.html")
+
+@app.get("/command.html")
+async def serve_command():
+    return FileResponse("static/command.html")
+
 @app.get("/static/{file_path:path}")
 async def serve_static(file_path: str):
     return FileResponse(f"static/{file_path}")
+
+# =============================================================================
+# Agents Endpoints
+# =============================================================================
+
+AGENTS_FILE = "agents.json"
+
+def _load_agents():
+    if os.path.exists(AGENTS_FILE):
+        with open(AGENTS_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+def _save_agents(agents):
+    with open(AGENTS_FILE, 'w') as f:
+        json.dump(agents, f, indent=2)
+
+class AgentRequest(BaseModel):
+    name: str
+    role: str = "assistant"
+    status: str = "active"
+    description: str = ""
+
+@app.get("/api/agents")
+async def get_agents():
+    """Get all agents."""
+    return _load_agents()
+
+@app.post("/api/agents")
+async def create_agent(request: AgentRequest):
+    """Create a new agent."""
+    agents = _load_agents()
+    agent_id = str(uuid.uuid4())[:8]
+    agent = {
+        "id": agent_id,
+        "name": request.name,
+        "role": request.role,
+        "status": request.status,
+        "description": request.description,
+    }
+    agents.append(agent)
+    _save_agents(agents)
+    return agent
+
+@app.put("/api/agents/{agent_id}")
+async def update_agent(agent_id: str, request: AgentRequest):
+    """Update an existing agent."""
+    agents = _load_agents()
+    for agent in agents:
+        if agent["id"] == agent_id:
+            agent["name"] = request.name
+            agent["role"] = request.role
+            agent["status"] = request.status
+            agent["description"] = request.description
+            _save_agents(agents)
+            return agent
+    raise HTTPException(status_code=404, detail="Agent not found")
+
+@app.delete("/api/agents/{agent_id}")
+async def delete_agent(agent_id: str):
+    """Delete an agent."""
+    agents = _load_agents()
+    agents = [a for a in agents if a["id"] != agent_id]
+    _save_agents(agents)
+    return {"status": "deleted"}
 
 # =============================================================================
 # Context Files Endpoints
