@@ -2894,5 +2894,79 @@
     },
     "time": "06:58:05.544",
     "timestamp": "2026-02-28T06:58:05.544361"
+  },
+  {
+    "trace_id": "20260228_181738_754725",
+    "type": "terminal_close",
+    "label": "Session Closed",
+    "data": {
+      "session_id": "1280ae24-f6de-4439-9841-ab5237591859",
+      "result": {
+        "success": true,
+        "message": "Terminal session closed",
+        "session_id": "1280ae24-f6de-4439-9841-ab5237591859"
+      }
+    },
+    "time": "18:28:57.346",
+    "timestamp": "2026-02-28T18:28:57.346699"
+  },
+  {
+    "trace_id": "20260228_181738_754725",
+    "type": "terminal_command",
+    "label": "Command: ls",
+    "data": {
+      "session_id": "49b10eb0-b6e6-4131-93bc-579213e3e31a",
+      "command": "ls"
+    },
+    "time": "19:34:38.204",
+    "timestamp": "2026-02-28T19:34:38.204415"
+  },
+  {
+    "trace_id": "20260228_181738_754725",
+    "type": "terminal_result",
+    "label": "Exit: 0",
+    "data": {
+      "session_id": "49b10eb0-b6e6-4131-93bc-579213e3e31a",
+      "success": true
+    },
+    "time": "19:34:38.264",
+    "timestamp": "2026-02-28T19:34:38.264879"
+  },
+  {
+    "trace_id": "20260228_181738_754725",
+    "type": "terminal_command",
+    "label": "Command: tailscale status",
+    "data": {
+      "session_id": "49b10eb0-b6e6-4131-93bc-579213e3e31a",
+      "command": "tailscale status"
+    },
+    "time": "19:34:49.433",
+    "timestamp": "2026-02-28T19:34:49.433487"
+  },
+  {
+    "trace_id": "20260228_181738_754725",
+    "type": "terminal_result",
+    "label": "Exit: 0",
+    "data": {
+      "session_id": "49b10eb0-b6e6-4131-93bc-579213e3e31a",
+      "success": true
+    },
+    "time": "19:34:49.497",
+    "timestamp": "2026-02-28T19:34:49.497498"
+  },
+  {
+    "trace_id": "20260228_181738_754725",
+    "type": "terminal_close",
+    "label": "Session Closed",
+    "data": {
+      "session_id": "5a316f75-8023-4be3-bf69-bd972f8181b7",
+      "result": {
+        "success": true,
+        "message": "Terminal session closed",
+        "session_id": "5a316f75-8023-4be3-bf69-bd972f8181b7"
+      }
+    },
+    "time": "21:28:19.781",
+    "timestamp": "2026-02-28T21:28:19.781722"
   }
 ]
