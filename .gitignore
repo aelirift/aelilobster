@@ -1,0 +1,5 @@
+user_login/*/testproject1/venv/
+user_login/*/testproject1/minikube-linux-amd64
+__pycache__/
+*.pyc
+logs/*.json

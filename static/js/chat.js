@@ -79,8 +79,8 @@ window.addEventListener('load', function() {
     console.log('[DEBUG] Page loaded');
 });
 
-// Load saved mode from localStorage (project-specific)
-function loadSavedMode() {
+// Load saved mode from localStorage (project-specific) AND from requirements.md via API
+async function loadSavedMode() {
     const projectSelect = document.getElementById('headerProject');
     const projectId = projectSelect ? projectSelect.value : 'none';
     const localProject = localStorage.getItem('selectedProject');
@@ -92,6 +92,26 @@ function loadSavedMode() {
     console.log('[DEBUG] loadSavedMode: modeKey =', modeKey);
     console.log('[DEBUG] loadSavedMode: savedMode =', savedMode);
     
+    // First, try to load from API (requirements.md) - this takes priority
+    if (projectId && projectId !== 'none') {
+        try {
+            const response = await fetch(`/api/projects/${projectId}/settings`);
+            const data = await response.json();
+            if (data.settings && data.settings.chat_mode) {
+                console.log('[DEBUG] loadSavedMode: Loaded from API:', data.settings.chat_mode);
+                if (data.settings.chat_mode === 'terminal') {
+                    chatMode = false;
+                    terminalMode = true;
+                    console.log('[DEBUG] loadSavedMode: FINAL chatMode =', chatMode, 'terminalMode =', terminalMode, '(from API)');
+                    return;
+                }
+            }
+        } catch (e) {
+            console.log('[DEBUG] loadSavedMode: Failed to load from API:', e);
+        }
+    }
+    
+    // Fall back to localStorage
     if (savedMode === 'terminal') {
         chatMode = false;
         terminalMode = true;
@@ -103,8 +123,8 @@ function loadSavedMode() {
     console.log('[DEBUG] loadSavedMode: FINAL chatMode =', chatMode, 'terminalMode =', terminalMode);
 }
 
-// Save mode to localStorage (project-specific)
-function saveMode() {
+// Save mode to localStorage (project-specific) AND to requirements.md via API
+async function saveMode() {
     const modeKey = getProjectStorageKey('chatMode');
     if (terminalMode) {
         localStorage.setItem(modeKey, 'terminal');
@@ -112,6 +132,23 @@ function saveMode() {
         localStorage.setItem(modeKey, 'chat');
     }
     console.log('[DEBUG] saveMode: modeKey =', modeKey, 'chatMode =', chatMode, 'terminalMode =', terminalMode);
+    
+    // Also save to requirements.md via API
+    const projectSelect = document.getElementById('headerProject');
+    const projectId = projectSelect ? projectSelect.value : 'none';
+    if (projectId && projectId !== 'none') {
+        try {
+            const chatModeValue = terminalMode ? 'terminal' : 'chat';
+            await fetch(`/api/projects/${projectId}/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_mode: chatModeValue })
+            });
+            console.log('[DEBUG] saveMode: Saved to API:', chatModeValue);
+        } catch (e) {
+            console.log('[DEBUG] saveMode: Failed to save to API:', e);
+        }
+    }
 }
 
 // Strip ANSI color codes from terminal output
@@ -442,6 +479,9 @@ function clearTrace() {
     traceUserScrolledUp = false;
     traceEntries = [];
     saveTraceState();
+    
+    // Also clear the backend trace logger (both in-memory and persistent file)
+    fetch('/api/trace/clear', { method: 'POST' }).catch(e => console.log('Failed to clear trace:', e));
 }
 
 // Save trace entries to localStorage
@@ -507,9 +547,12 @@ function updateProjectSelectorState() {
 const newChatBtn = document.getElementById('newChatBtn');
 if (newChatBtn) {
     newChatBtn.addEventListener('click', () => {
-        // Clear messages
+        // Clear messages - use project-specific keys
         messages = [];
-        localStorage.removeItem('chatMessages');
+        const chatKey = getProjectStorageKey('chatMessages');
+        const terminalKey = getProjectStorageKey('terminalMessages');
+        localStorage.removeItem(chatKey);
+        localStorage.removeItem(terminalKey);
         
         // Clear project selection
         localStorage.removeItem('selectedProject');
@@ -518,9 +561,10 @@ if (newChatBtn) {
             projectSelect.value = '';
         }
         
-        // Clear traces
+        // Clear traces - use project-specific key
         clearTrace();
-        localStorage.removeItem('chatTraceEntries');
+        const traceKey = getProjectStorageKey('traceEntries');
+        localStorage.removeItem(traceKey);
         
         // Clear URL params
         window.history.replaceState({}, document.title, '/');
@@ -538,12 +582,17 @@ clearChatBtn.addEventListener('click', () => {
         : 'Clear all chat messages?';
     if (confirm(confirmMsg)) {
         messages = [];
-        // Clear only the current mode's messages
+        // Clear only the current mode's messages - use project-specific keys
+        const chatKey = getProjectStorageKey('chatMessages');
+        const terminalKey = getProjectStorageKey('terminalMessages');
         if (terminalMode) {
-            localStorage.removeItem('terminalMessages');
+            localStorage.removeItem(terminalKey);
         } else {
-            localStorage.removeItem('chatMessages');
+            localStorage.removeItem(chatKey);
         }
+        // Also clear trace entries with project-specific key
+        const traceKey = getProjectStorageKey('traceEntries');
+        localStorage.removeItem(traceKey);
         renderMessages();
         updateProjectSelectorState();
     }
@@ -2157,15 +2206,41 @@ function initResizablePanel() {
     // Insert between main content and trace panel
     appContainer.insertBefore(resizeHandle, tracePanel);
     
-    // Load saved width from localStorage
-    const savedWidth = localStorage.getItem('tracePanelWidth');
-    if (savedWidth) {
-        const width = parseInt(savedWidth, 10);
-        if (width > 200 && width < 800) {
-            tracePanel.style.width = width + 'px';
-            document.documentElement.style.setProperty('--trace-width', width + 'px');
+    // Load saved width from localStorage AND from API (requirements.md)
+    async function loadTraceWidth() {
+        const projectSelect = document.getElementById('headerProject');
+        const projectId = projectSelect ? projectSelect.value : 'none';
+        
+        // First try API (requirements.md)
+        if (projectId && projectId !== 'none') {
+            try {
+                const response = await fetch(`/api/projects/${projectId}/settings`);
+                const data = await response.json();
+                if (data.settings && data.settings.trace_panel_width) {
+                    const width = data.settings.trace_panel_width;
+                    console.log('[DEBUG] initResizablePanel: Loaded width from API:', width);
+                    if (width > 200 && width < 800) {
+                        tracePanel.style.width = width + 'px';
+                        document.documentElement.style.setProperty('--trace-width', width + 'px');
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.log('[DEBUG] initResizablePanel: Failed to load width from API:', e);
+            }
+        }
+        
+        // Fall back to localStorage
+        const savedWidth = localStorage.getItem('tracePanelWidth');
+        if (savedWidth) {
+            const width = parseInt(savedWidth, 10);
+            if (width > 200 && width < 800) {
+                tracePanel.style.width = width + 'px';
+                document.documentElement.style.setProperty('--trace-width', width + 'px');
+            }
         }
     }
+    loadTraceWidth();
     
     let isResizing = false;
     let startX = 0;
@@ -2190,15 +2265,33 @@ function initResizablePanel() {
         document.documentElement.style.setProperty('--trace-width', newWidth + 'px');
     });
     
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('mouseup', async () => {
         if (isResizing) {
             isResizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
             resizeHandle.classList.remove('active');
             
+            const newWidth = tracePanel.offsetWidth;
+            
             // Save width to localStorage
-            localStorage.setItem('tracePanelWidth', tracePanel.offsetWidth);
+            localStorage.setItem('tracePanelWidth', newWidth);
+            
+            // Also save to requirements.md via API
+            const projectSelect = document.getElementById('headerProject');
+            const projectId = projectSelect ? projectSelect.value : 'none';
+            if (projectId && projectId !== 'none') {
+                try {
+                    await fetch(`/api/projects/${projectId}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ trace_panel_width: newWidth })
+                    });
+                    console.log('[DEBUG] mouseup: Saved width to API:', newWidth);
+                } catch (e) {
+                    console.log('[DEBUG] mouseup: Failed to save width to API:', e);
+                }
+            }
         }
     });
 }

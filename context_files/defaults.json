@@ -3,5 +3,6 @@
   "debugger": "default",
   "pre-code": "test",
   "pod": "default_pod",
-  "names": "naming"
+  "names": "naming",
+  "requirements": "default_req"
 }

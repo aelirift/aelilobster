@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from pathlib import Path
 import json
 import os
 import asyncio
@@ -513,6 +514,22 @@ async def clear_trace_id(trace_id: str):
     """Clear trace entries for a specific trace ID."""
     trace_log.clear_trace_log(trace_id)
     return {"status": "cleared", "trace_id": trace_id}
+
+
+@app.post("/api/trace/clear")
+async def clear_trace():
+    """Clear all trace entries from both in-memory logger and persistent file."""
+    # Clear in-memory logger
+    trace_logger.clear()
+    
+    # Also clear the persistent trace file
+    try:
+        from services.trace_log import clear_trace_log
+        clear_trace_log()  # Clear all entries from trace.json
+    except Exception as e:
+        pass
+    
+    return {"status": "cleared"}
 
 # =============================================================================
 # Static Files
@@ -1099,6 +1116,183 @@ async def delete_project_secret(project_id: str, secret_id: str):
             {"project_id": project_id, "secret_id": secret_id}
         )
     return result
+
+
+# =============================================================================
+# Project Settings (stored in context file - "### Project Settings" section)
+# =============================================================================
+
+class ProjectSettings(BaseModel):
+    chat_mode: Optional[str] = None  # "chat" or "terminal"
+    trace_panel_width: Optional[int] = None
+
+
+def _parse_settings_from_context_file(content: str) -> Dict[str, Any]:
+    """Parse settings from context file content.
+    
+    Settings are stored in the "### Project Settings" section as:
+    - **key**: `value`
+    """
+    settings = {}
+    
+    # Find the Project Settings section
+    lines = content.split('\n')
+    in_settings_section = False
+    
+    for line in lines:
+        # Check for section header
+        if '### Project Settings' in line:
+            in_settings_section = True
+            continue
+        
+        # Stop at next section (## or ###)
+        if in_settings_section and line.strip().startswith('##'):
+            break
+        
+        # Parse key: value pairs - format: - **key**: `value`
+        if in_settings_section and '**' in line and ':' in line:
+            # Extract key between ** **
+            key_match = line.split('**')
+            if len(key_match) >= 3:
+                key = key_match[1]
+                # Extract value between ` `
+                value_match = line.split('`')
+                if len(value_match) >= 2:
+                    value = value_match[1]
+                    settings[key] = value
+    
+    return settings
+
+
+def _update_settings_in_context_file(content: str, settings: Dict[str, Any]) -> str:
+    """Update settings in context file content.
+    
+    Settings are stored in the "### Project Settings" section.
+    """
+    lines = content.split('\n')
+    new_lines = []
+    in_settings_section = False
+    settings_updated = False
+    
+    for line in lines:
+        # Check for section header
+        if '### Project Settings' in line:
+            in_settings_section = True
+            new_lines.append(line)
+            continue
+        
+        # End of settings section
+        if in_settings_section and line.strip().startswith('##'):
+            # Add any remaining settings that weren't in the file
+            for key, value in settings.items():
+                if not settings_updated or key not in [k for k, v in settings.items()]:
+                    new_lines.append(f"- **{key}**: `{value}`")
+            in_settings_section = False
+            settings_updated = True
+            new_lines.append(line)
+            continue
+        
+        # Update existing setting
+        if in_settings_section and ':**' in line:
+            import re
+            match = re.search(r'\*\*(\w+)\*\*:', line)
+            if match:
+                key = match.group(1)
+                if key in settings:
+                    new_lines.append(f"- **{key}**: `{settings[key]}`")
+                    # Remove from dict to track what's been updated
+                    del settings[key]
+                    continue
+        
+        new_lines.append(line)
+    
+    # If we never hit the end of settings section, add remaining settings at end
+    if in_settings_section and settings:
+        new_lines.append("")
+        for key, value in settings.items():
+            new_lines.append(f"- **{key}**: `{value}`")
+    
+    return '\n'.join(new_lines)
+
+
+@app.get("/api/projects/{project_id}/settings")
+async def get_project_settings(project_id: str):
+    """Get project settings from the project's requirements context file."""
+    # Get the project's context settings to find which context file is the requirements
+    try:
+        # Use the same logic as context-settings endpoint - load from config or defaults
+        context_settings = context_files_service.load_project_context_settings(project_id)
+        if not context_settings:
+            context_settings = context_files_service.load_context_defaults()
+        
+        requirements_name = context_settings.get('requirements')
+        
+        if not requirements_name:
+            return {"settings": {}, "error": "No requirements context file set"}
+        
+        # Construct the full file ID: {name}_{type} where type is "requirements"
+        requirements_file_id = f"{requirements_name}_requirements"
+        
+        # Load the context file
+        context_files = context_files_service.load_context_files()
+        req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
+        
+        if not req_file:
+            return {"settings": {}, "error": f"Context file {requirements_file_id} not found"}
+        
+        # Parse settings from content
+        settings = _parse_settings_from_context_file(req_file.get('content', ''))
+        return {"settings": settings}
+        
+    except Exception as e:
+        return {"settings": {}, "error": str(e)}
+
+
+@app.put("/api/projects/{project_id}/settings")
+async def update_project_settings(project_id: str, settings: ProjectSettings):
+    """Update project settings in the project's requirements context file."""
+    try:
+        # Get the project's context settings to find which context file is the requirements
+        context_settings = context_files_service.load_project_context_settings(project_id)
+        if not context_settings:
+            context_settings = context_files_service.load_context_defaults()
+        
+        requirements_name = context_settings.get('requirements')
+        
+        if not requirements_name:
+            return {"success": False, "error": "No requirements context file set"}
+        
+        # Construct the full file ID: {name}_{type} where type is "requirements"
+        requirements_file_id = f"{requirements_name}_requirements"
+        
+        # Load the context file
+        context_files = context_files_service.load_context_files()
+        req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
+        
+        if not req_file:
+            return {"success": False, "error": f"Context file {requirements_file_id} not found"}
+        
+        # Parse existing settings and update
+        existing_settings = _parse_settings_from_context_file(req_file.get('content', ''))
+        
+        # Map frontend names to context file names
+        if settings.chat_mode is not None:
+            existing_settings['chat-mode'] = settings.chat_mode
+        if settings.trace_panel_width is not None:
+            existing_settings['chat-size-setting'] = str(settings.trace_panel_width)
+        
+        # Update the content
+        updated_content = _update_settings_in_context_file(req_file.get('content', ''), existing_settings)
+        
+        # Save back to context file
+        # Parse the file_id to get name and type
+        file_type = "requirements"
+        context_files_service.save_context_file(requirements_file_id, file_type, requirements_name, updated_content)
+        
+        return {"success": True, "settings": existing_settings}
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # =============================================================================
