@@ -150,6 +150,16 @@ async def _process_command_node(
     executor = Executor()
     debugger = DebuggerWrapper()
     
+    # Log tree node status - starting execution (IN_PROGRESS)
+    log_trace('tree_node', f'L{node.level} Node Executing: {node.id}', {
+        'node_id': node.id,
+        'parent_id': node.parent_id,
+        'code_preview': node.code[:100] + '...' if len(node.code) > 100 else node.code,
+        'language': node.language,
+        'level': node.level,
+        'state': 'in_progress'
+    }, looper_state.trace_callback)
+    
     log_trace('process', f'Executing Code (Level {node.level})', {
         'code_preview': node.code[:100] + '...' if len(node.code) > 100 else node.code,
         'language': node.language,
@@ -218,6 +228,28 @@ async def _process_command_node(
     node.error = exec_result.get('output', '') if exec_result.get('is_error') else None
     node.success = not exec_result.get('is_error', False)
     
+    # Log tree node completion status - REAL-TIME UPDATE
+    if node.success:
+        log_trace('tree_node', f'L{node.level} Node Complete: {node.id}', {
+            'node_id': node.id,
+            'parent_id': node.parent_id,
+            'code_preview': node.code[:100] + '...' if len(node.code) > 100 else node.code,
+            'language': node.language,
+            'level': node.level,
+            'state': 'complete',
+            'result_preview': node.result[:200] + '...' if node.result and len(node.result) > 200 else node.result
+        }, looper_state.trace_callback)
+    else:
+        log_trace('tree_node', f'L{node.level} Node Error: {node.id}', {
+            'node_id': node.id,
+            'parent_id': node.parent_id,
+            'code_preview': node.code[:100] + '...' if len(node.code) > 100 else node.code,
+            'language': node.language,
+            'level': node.level,
+            'state': 'error',
+            'error_preview': node.error[:200] + '...' if node.error and len(node.error) > 200 else node.error
+        }, looper_state.trace_callback)
+    
     log_trace('output', f'Code Result (Level {node.level})', {
         'exit_code': exec_result.get('exit_code'),
         'success': node.success,
@@ -269,6 +301,17 @@ async def _process_command_node(
                 fix_node.level = node.level + 1
                 node.children.append(fix_node)
                 
+                # Log FIX node creation for tree visualization
+                log_trace('tree_node', f'L{fix_node.level} Fix Node Created', {
+                    'node_id': fix_node.id,
+                    'parent_id': fix_node.parent_id,
+                    'code_preview': fix_node.code[:100] + '...' if len(fix_node.code) > 100 else fix_node.code,
+                    'language': fix_node.language,
+                    'level': fix_node.level,
+                    'instruction': _get_instruction_for_code(fix_node.code, fix_node.language),
+                    'fix_for_error': node.error[:100] + '...' if node.error and len(node.error) > 100 else node.error
+                }, looper_state.trace_callback)
+                
                 await _process_command_node(
                     fix_node,
                     llm_client,
@@ -293,6 +336,56 @@ def get_pod_settings() -> Dict[str, Any]:
     """Get pod settings from the executor module."""
     from .executor import Executor
     return Executor().settings
+
+
+def _get_instruction_for_code(code: str, language: str) -> str:
+    """
+    Extract instruction context from code block.
+    Looks for comments or common patterns that indicate what the code should do.
+    
+    Args:
+        code: The code block content
+        language: Programming language
+        
+    Returns:
+        A human-readable instruction string
+    """
+    if not code:
+        return "Execute code"
+    
+    # Get first few lines
+    lines = code.strip().split('\n')
+    first_lines = '\n'.join(lines[:3])
+    
+    # Check for common patterns
+    if language == 'python':
+        # Look for docstring or comments at the start
+        if '"""' in first_lines or "'''" in first_lines:
+            # Try to extract docstring
+            import re
+            docstring_match = re.search(r'"""(.*?)"""', code, re.DOTALL)
+            if docstring_match:
+                instruction = docstring_match.group(1).strip()[:100]
+                if instruction:
+                    return instruction
+        
+        # Look for comment lines
+        comment_lines = [l.strip().lstrip('#') for l in lines if l.strip().startswith('#')]
+        if comment_lines:
+            return comment_lines[0][:100]
+    
+    elif language == 'shell' or language == 'bash':
+        # First line is often the command
+        if lines:
+            return f"Run: {lines[0][:100]}"
+    
+    # Default: show what type of file/operation
+    if code.strip().startswith('#!'):
+        # Shebang - show the interpreter
+        return f"Execute with {code.split()[0].lstrip('#!')}"
+    
+    # Generic fallback
+    return f"Create/run {language} code"
 
 
 # =============================================================================
@@ -390,11 +483,12 @@ async def run_looper(
         
         log_trace('process', 'Extracted Commands', {'count': len(code_blocks)}, trace_callback)
         
-        # Step 3: Create root nodes and execute each
+        # Step 3: Create root nodes and ADD THEM TO TREE IMMEDIATELY for real-time visualization
         for i, block in enumerate(code_blocks):
             if looper_state.should_stop:
                 break
             
+            # Create root node
             root_node = CommandNode(
                 block['code'],
                 block.get('language', 'python'),
@@ -402,6 +496,16 @@ async def run_looper(
             )
             root_node.level = 0
             looper_state.command_tree.append(root_node)
+            
+            # IMMEDIATELY log L1 node creation for real-time tree visualization
+            log_trace('tree_node', f'L1 Node Created: Command {i+1}', {
+                'node_id': root_node.id,
+                'code_preview': root_node.code[:100] + '...' if len(root_node.code) > 100 else root_node.code,
+                'language': root_node.language,
+                'instruction': _get_instruction_for_code(root_node.code, root_node.language),
+                'level': 0,
+                'index': i
+            }, trace_callback)
             
             # Process this node (will handle errors recursively)
             await _process_command_node(
