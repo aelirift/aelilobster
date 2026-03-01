@@ -49,6 +49,7 @@ from services.looper import (
 )
 from services import trace_log
 from services import pre_llm
+from services import project_settings_db
 
 # Alias for backward compatibility
 load_config = config.load_config
@@ -1172,7 +1173,8 @@ def _update_settings_in_context_file(content: str, settings: Dict[str, Any]) -> 
     lines = content.split('\n')
     new_lines = []
     in_settings_section = False
-    settings_updated = False
+    # Track which keys have been processed to skip duplicates
+    processed_keys = set()
     
     for line in lines:
         # Check for section header
@@ -1181,27 +1183,30 @@ def _update_settings_in_context_file(content: str, settings: Dict[str, Any]) -> 
             new_lines.append(line)
             continue
         
-        # End of settings section
+        # End of settings section - only add settings that weren't in the file at all
         if in_settings_section and line.strip().startswith('##'):
-            # Add any remaining settings that weren't in the file
             for key, value in settings.items():
-                if not settings_updated or key not in [k for k, v in settings.items()]:
+                if key not in processed_keys:
                     new_lines.append(f"- **{key}**: `{value}`")
+                    processed_keys.add(key)
             in_settings_section = False
-            settings_updated = True
             new_lines.append(line)
             continue
         
-        # Update existing setting
+        # Update existing setting (skip duplicates - don't add them)
         if in_settings_section and ':**' in line:
             import re
             match = re.search(r'\*\*(\w+)\*\*:', line)
             if match:
                 key = match.group(1)
-                if key in settings:
+                # Check processed_keys FIRST - if already processed, skip (duplicate)
+                if key in processed_keys:
+                    # This is a duplicate entry for a key we've already processed - SKIP it
+                    continue
+                elif key in settings:
+                    # Update with new value
                     new_lines.append(f"- **{key}**: `{settings[key]}`")
-                    # Remove from dict to track what's been updated
-                    del settings[key]
+                    processed_keys.add(key)
                     continue
         
         new_lines.append(line)
@@ -1210,38 +1215,48 @@ def _update_settings_in_context_file(content: str, settings: Dict[str, Any]) -> 
     if in_settings_section and settings:
         new_lines.append("")
         for key, value in settings.items():
-            new_lines.append(f"- **{key}**: `{value}`")
+            if key not in processed_keys:
+                new_lines.append(f"- **{key}**: `{value}`")
+                processed_keys.add(key)
     
     return '\n'.join(new_lines)
 
 
 @app.get("/api/projects/{project_id}/settings")
 async def get_project_settings(project_id: str):
-    """Get project settings from the project's requirements context file."""
-    # Get the project's context settings to find which context file is the requirements
+    """Get project settings - from database for chat_mode/chat_window_size, else from context file."""
     try:
-        # Use the same logic as context-settings endpoint - load from config or defaults
+        # First, try to get chat_mode and chat_window_size from database
+        db_settings = project_settings_db.get_project_settings(project_id)
+        
+        # Build settings dict - database takes priority for these two settings
+        settings = {}
+        
+        # Get from database (these take priority) - use underscore for frontend compatibility
+        if 'chat_mode' in db_settings:
+            settings['chat_mode'] = db_settings['chat_mode']
+        if 'chat_window_size' in db_settings:
+            settings['chat_window_size'] = db_settings['chat_window_size']
+        
+        # For other settings, fall back to context file
         context_settings = context_files_service.load_project_context_settings(project_id)
         if not context_settings:
             context_settings = context_files_service.load_context_defaults()
         
         requirements_name = context_settings.get('requirements')
         
-        if not requirements_name:
-            return {"settings": {}, "error": "No requirements context file set"}
+        if requirements_name:
+            requirements_file_id = f"{requirements_name}_requirements"
+            context_files = context_files_service.load_context_files()
+            req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
+            
+            if req_file:
+                file_settings = _parse_settings_from_context_file(req_file.get('content', ''))
+                # Only add settings that are NOT already in database
+                for key, value in file_settings.items():
+                    if key not in ('chat_mode', 'chat_window_size', 'chat-mode', 'chat-size-setting'):
+                        settings[key] = value
         
-        # Construct the full file ID: {name}_{type} where type is "requirements"
-        requirements_file_id = f"{requirements_name}_requirements"
-        
-        # Load the context file
-        context_files = context_files_service.load_context_files()
-        req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
-        
-        if not req_file:
-            return {"settings": {}, "error": f"Context file {requirements_file_id} not found"}
-        
-        # Parse settings from content
-        settings = _parse_settings_from_context_file(req_file.get('content', ''))
         return {"settings": settings}
         
     except Exception as e:
@@ -1250,46 +1265,46 @@ async def get_project_settings(project_id: str):
 
 @app.put("/api/projects/{project_id}/settings")
 async def update_project_settings(project_id: str, settings: ProjectSettings):
-    """Update project settings in the project's requirements context file."""
+    """Update project settings - save chat_mode/chat_window_size to database, others to context file."""
     try:
-        # Get the project's context settings to find which context file is the requirements
+        # Save chat_mode and chat_window_size to DATABASE (not context file)
+        if settings.chat_mode is not None:
+            project_settings_db.set_setting(project_id, 'chat_mode', settings.chat_mode)
+        if settings.trace_panel_width is not None:
+            project_settings_db.set_setting(project_id, 'chat_window_size', str(settings.trace_panel_width))
+        
+        # For other settings, still save to context file
         context_settings = context_files_service.load_project_context_settings(project_id)
         if not context_settings:
             context_settings = context_files_service.load_context_defaults()
         
         requirements_name = context_settings.get('requirements')
         
-        if not requirements_name:
-            return {"success": False, "error": "No requirements context file set"}
+        existing_settings = {}
+        if requirements_name:
+            requirements_file_id = f"{requirements_name}_requirements"
+            context_files = context_files_service.load_context_files()
+            req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
+            
+            if req_file:
+                existing_settings = _parse_settings_from_context_file(req_file.get('content', ''))
+                
+                # Update non-chat settings
+                # Note: chat-mode and chat-size-setting now come from database, not context file
+                
+                # Update the content
+                updated_content = _update_settings_in_context_file(req_file.get('content', ''), existing_settings)
+                
+                # Save back to context file
+                file_type = "requirements"
+                context_files_service.save_context_file(requirements_file_id, file_type, requirements_name, updated_content)
         
-        # Construct the full file ID: {name}_{type} where type is "requirements"
-        requirements_file_id = f"{requirements_name}_requirements"
+        # Return combined settings (from database + context file)
+        return_settings = project_settings_db.get_project_settings(project_id)
+        return_settings['chat-mode'] = return_settings.get('chat_mode', 'chat')
+        return_settings['chat-size-setting'] = return_settings.get('chat_window_size', '300')
         
-        # Load the context file
-        context_files = context_files_service.load_context_files()
-        req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
-        
-        if not req_file:
-            return {"success": False, "error": f"Context file {requirements_file_id} not found"}
-        
-        # Parse existing settings and update
-        existing_settings = _parse_settings_from_context_file(req_file.get('content', ''))
-        
-        # Map frontend names to context file names
-        if settings.chat_mode is not None:
-            existing_settings['chat-mode'] = settings.chat_mode
-        if settings.trace_panel_width is not None:
-            existing_settings['chat-size-setting'] = str(settings.trace_panel_width)
-        
-        # Update the content
-        updated_content = _update_settings_in_context_file(req_file.get('content', ''), existing_settings)
-        
-        # Save back to context file
-        # Parse the file_id to get name and type
-        file_type = "requirements"
-        context_files_service.save_context_file(requirements_file_id, file_type, requirements_name, updated_content)
-        
-        return {"success": True, "settings": existing_settings}
+        return {"success": True, "settings": return_settings}
         
     except Exception as e:
         return {"success": False, "error": str(e)}

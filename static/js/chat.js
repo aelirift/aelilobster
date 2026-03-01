@@ -44,12 +44,11 @@ let isLooping = false;
 let traceId = 0;
 let traceEntries = []; // Store trace entries for session persistence
 
-// Terminal mode state
-let terminalMode = false;
+// Mode state - single variable: 'chat' or 'terminal'
+let currentMode = 'chat'; // 'chat' or 'terminal'
 let terminalSessionId = null;
 let terminalWaitingForInput = false;
 let terminalWaitingForPassword = false;
-let chatMode = true; // true = conversation mode, false = terminal mode
 
 // Set password input mode (hide typed characters)
 function setPasswordInputMode(enabled) {
@@ -67,7 +66,7 @@ function setPasswordInputMode(enabled) {
 
 // Save terminal session before page unload
 window.addEventListener('beforeunload', function() {
-    if (terminalMode) {
+    if (currentMode === 'terminal') {
         // Save state before closing
         saveState();
         console.log('[DEBUG] Page unloading, saved terminal mode');
@@ -92,61 +91,63 @@ async function loadSavedMode() {
     console.log('[DEBUG] loadSavedMode: modeKey =', modeKey);
     console.log('[DEBUG] loadSavedMode: savedMode =', savedMode);
     
-    // First, try to load from API (requirements.md) - this takes priority
+    // First, try to load from API (database) - this takes priority
+    console.log('[DEBUG] loadSavedMode: Fetching from API...');
     if (projectId && projectId !== 'none') {
         try {
             const response = await fetch(`/api/projects/${projectId}/settings`);
             const data = await response.json();
+            console.log('[DEBUG] loadSavedMode: API response:', JSON.stringify(data));
             if (data.settings && data.settings.chat_mode) {
-                console.log('[DEBUG] loadSavedMode: Loaded from API:', data.settings.chat_mode);
+                console.log('[DEBUG] loadSavedMode: Found chat_mode in API:', data.settings.chat_mode);
                 if (data.settings.chat_mode === 'terminal') {
-                    chatMode = false;
-                    terminalMode = true;
-                    console.log('[DEBUG] loadSavedMode: FINAL chatMode =', chatMode, 'terminalMode =', terminalMode, '(from API)');
+                    currentMode = 'terminal';
+                    console.log('[DEBUG] loadSavedMode: Set to TERMINAL mode from API');
+                    return;
+                } else if (data.settings.chat_mode === 'chat') {
+                    currentMode = 'chat';
+                    console.log('[DEBUG] loadSavedMode: Set to CHAT mode from API');
                     return;
                 }
+            } else {
+                console.log('[DEBUG] loadSavedMode: No chat_mode in API response, checking why...');
+                console.log('[DEBUG] loadSavedMode: data.settings =', data.settings);
             }
         } catch (e) {
             console.log('[DEBUG] loadSavedMode: Failed to load from API:', e);
         }
+    } else {
+        console.log('[DEBUG] loadSavedMode: projectId is invalid:', projectId);
     }
     
     // Fall back to localStorage
     if (savedMode === 'terminal') {
-        chatMode = false;
-        terminalMode = true;
+        currentMode = 'terminal';
     } else {
         // Default to chat mode if nothing saved OR if explicitly saved as chat
-        chatMode = true;
-        terminalMode = false;
+        currentMode = 'chat';
     }
-    console.log('[DEBUG] loadSavedMode: FINAL chatMode =', chatMode, 'terminalMode =', terminalMode);
+    console.log('[DEBUG] loadSavedMode: FINAL currentMode =', currentMode);
 }
 
-// Save mode to localStorage (project-specific) AND to requirements.md via API
+// Save mode to localStorage (project-specific) AND to database via API
 async function saveMode() {
-    console.log('[DEBUG] saveMode called from:', new Error().stack);
-    console.log('[DEBUG] saveMode current: chatMode=', chatMode, 'terminalMode=', terminalMode);
+    console.log('[DEBUG] saveMode called: currentMode =', currentMode);
     const modeKey = getProjectStorageKey('chatMode');
-    if (terminalMode) {
-        localStorage.setItem(modeKey, 'terminal');
-    } else {
-        localStorage.setItem(modeKey, 'chat');
-    }
-    console.log('[DEBUG] saveMode: modeKey =', modeKey, 'chatMode =', chatMode, 'terminalMode =', terminalMode);
+    localStorage.setItem(modeKey, currentMode);
+    console.log('[DEBUG] saveMode: modeKey =', modeKey, 'currentMode =', currentMode);
     
-    // Also save to requirements.md via API
+    // Also save to database via API
     const projectSelect = document.getElementById('headerProject');
     const projectId = projectSelect ? projectSelect.value : 'none';
     if (projectId && projectId !== 'none') {
         try {
-            const chatModeValue = terminalMode ? 'terminal' : 'chat';
             await fetch(`/api/projects/${projectId}/settings`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_mode: chatModeValue })
+                body: JSON.stringify({ chat_mode: currentMode })
             });
-            console.log('[DEBUG] saveMode: Saved to API:', chatModeValue);
+            console.log('[DEBUG] saveMode: Saved to API:', currentMode);
         } catch (e) {
             console.log('[DEBUG] saveMode: Failed to save to API:', e);
         }
@@ -161,11 +162,10 @@ function stripAnsiCodes(text) {
 
 // Terminal mode functions
 async function enterTerminalMode() {
-    if (terminalMode) return;
+    if (currentMode === 'terminal') return;
     
-    // Update chat mode state
-    chatMode = false;
-    terminalMode = true;
+    // Update mode to terminal
+    currentMode = 'terminal';
     saveMode();
     
     // Update UI
@@ -214,23 +214,21 @@ async function enterTerminalMode() {
         } else {
             alert('Failed to start terminal: ' + data.message);
             // Revert on failure
-            chatMode = true;
-            terminalMode = false;
+            currentMode = 'chat';
             saveMode();
         }
     } catch (e) {
         alert('Error starting terminal: ' + e.message);
-        chatMode = true;
-        terminalMode = false;
+        currentMode = 'chat';
         saveMode();
     }
 }
 
 async function exitTerminalMode() {
-    if (!terminalMode) return;
+    if (currentMode !== 'terminal') return;
     
     // Update chat mode state
-    chatMode = true;
+    currentMode = 'chat';
     saveMode();
     
     try {
@@ -240,7 +238,7 @@ async function exitTerminalMode() {
         }
         
         const oldSessionId = terminalSessionId;
-        terminalMode = false;
+        currentMode = 'chat';
         terminalSessionId = null;
         terminalWaitingForInput = false;
         setPasswordInputMode(false); // Reset password input mode
@@ -281,8 +279,8 @@ async function exitTerminalMode() {
 
 // Toggle between chat and terminal mode
 async function toggleMode() {
-    console.log('[DEBUG] toggleMode called! chatMode=', chatMode, 'terminalMode=', terminalMode);
-    if (chatMode) {
+    console.log('[DEBUG] toggleMode called! currentMode=', currentMode);
+    if (currentMode === 'chat') {
         // Switch to terminal mode
         console.log('[DEBUG] toggleMode calling enterTerminalMode!');
         await enterTerminalMode();
@@ -585,8 +583,8 @@ if (newChatBtn) {
 // Clear chat button
 console.log('[DEBUG] clearChatBtn event listener attached');
 clearChatBtn.addEventListener('click', () => {
-    console.log('[DEBUG] clearChatBtn clicked! terminalMode=', terminalMode);
-    const confirmMsg = terminalMode 
+    console.log('[DEBUG] clearChatBtn clicked! currentMode=', currentMode);
+    const confirmMsg = currentMode === 'terminal' 
         ? 'Clear all terminal history?' 
         : 'Clear all chat messages?';
     if (confirm(confirmMsg)) {
@@ -651,9 +649,9 @@ async function loadState() {
     await loadProjects();
     
     // Now that we have a valid project, load the saved mode - MUST await!
-    console.log('[DEBUG] loadState: BEFORE loadSavedMode, terminalMode =', terminalMode);
+    console.log('[DEBUG] loadState: BEFORE loadSavedMode, currentMode =', currentMode);
     await loadSavedMode();
-    console.log('[DEBUG] loadState: AFTER loadSavedMode, terminalMode =', terminalMode);
+    console.log('[DEBUG] loadState: AFTER loadSavedMode, currentMode =', currentMode);
     
     // FIX: Removed saveMode() call here - it was overwriting the loaded mode!
     // saveMode() is now only called when user explicitly changes mode (in enterTerminalMode/exitTerminalMode)
@@ -662,7 +660,7 @@ async function loadState() {
     // Update UI based on loaded mode
     const modeToggle = document.getElementById('modeToggle');
     if (modeToggle) {
-        if (terminalMode) {
+        if (currentMode === 'terminal') {
             modeToggle.classList.add('terminal-mode');
             modeToggle.querySelector('.mode-icon').textContent = '🖥️';
             modeToggle.querySelector('.mode-label').textContent = 'Terminal';
@@ -706,7 +704,7 @@ async function loadState() {
     console.log('[DEBUG] loadState: chatKey=', chatKey, 'terminalKey=', terminalKey, 'traceKey=', traceKey);
     
     let savedMessages;
-    if (terminalMode) {
+    if (currentMode === 'terminal') {
         savedMessages = localStorage.getItem(terminalKey);
     } else {
         savedMessages = localStorage.getItem(chatKey);
@@ -738,7 +736,7 @@ async function loadState() {
     }
     
     // If loading terminal mode, start a new terminal session
-    if (terminalMode) {
+    if (currentMode === 'terminal') {
         try {
             const response = await fetch('/api/terminal/start', {
                 method: 'POST',
@@ -763,8 +761,7 @@ async function loadState() {
             } else {
                 // Failed to start terminal, switch back to chat mode
                 alert('Failed to start terminal: ' + data.message);
-                chatMode = true;
-                terminalMode = false;
+                currentMode = 'chat';
                 saveMode();
                 
                 // Update UI back to chat mode
@@ -784,8 +781,7 @@ async function loadState() {
         } catch (e) {
             console.error('Error starting terminal session:', e);
             // On error, fall back to chat mode
-            chatMode = true;
-            terminalMode = false;
+            currentMode = 'chat';
             saveMode();
         }
     }
@@ -960,7 +956,7 @@ function saveState() {
     const traceKey = getProjectStorageKey('traceEntries');
     
     // Save messages to appropriate storage based on current mode
-    if (terminalMode) {
+    if (currentMode === 'terminal') {
         localStorage.setItem(terminalKey, JSON.stringify(messages));
     } else {
         localStorage.setItem(chatKey, JSON.stringify(messages));
@@ -1115,7 +1111,7 @@ async function sendMessage() {
     }
     
     // Handle terminal mode
-    if (!chatMode && terminalMode) {
+    if (currentMode === 'terminal') {
         if (terminalWaitingForInput) {
             // Send input to waiting command
             messageInput.value = '';
