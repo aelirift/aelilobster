@@ -135,18 +135,9 @@ class LLMClient:
         Returns:
             The LLM response with fixed code
         """
-        fix_prompt = f"""The previous code had an error:
-
-Error: {error}
-Error Type: {error_type}
-
-Original Code:
-```
-{original_code}
-```
-
-Please provide corrected code that fixes this error. Respond with only the corrected code in a code block.
-Do not include explanations - just the fixed code."""
+        # Use the improved fix prompt from DebuggerWrapper
+        from services.looper.debugger import DebuggerWrapper
+        fix_prompt = DebuggerWrapper.create_fix_prompt(error, error_type, original_code)
         
         return await self.call(
             fix_prompt,

@@ -62,9 +62,9 @@ def install_requirements_in_running_pod(pod_name: str, requirements: list) -> Di
     if not requirements:
         return {"success": True, "message": "No requirements to install", "output": ""}
     
-    # Create pip install command
+    # Create pip install command - use --break-system-packages for Ubuntu 24.04
     reqs = ' '.join(requirements)
-    cmd = f"pip install --no-cache-dir {reqs}"
+    cmd = f"pip3 install --break-system-packages --no-cache-dir {reqs}"
     
     result = subprocess.run(
         ['podman', 'exec', pod_name, 'sh', '-c', cmd],
@@ -220,15 +220,22 @@ def start_pod(user_name: str, project_name: str, project_path: Optional[str] = N
             }
     else:
         # Pod doesn't exist - create it
-        work_dir = project_path if project_path else settings.get("work_dir", "/tmp")
-        image = settings.get("shell_image", "alpine")
+        # FIX: Use container-internal path instead of host path
+        if project_path:
+            host_path = project_path
+            container_work_dir = "/workspace"
+        else:
+            host_path = settings.get("work_dir", "/tmp")
+            container_work_dir = "/tmp"
+        work_dir = container_work_dir
+        image = settings.get("shell_image", "ubuntu:latest")
         
         create_result = subprocess.run(
             [
                 'podman', 'run', '-d',
                 '--name', pod_name,
-                '-v', f'{work_dir}:{work_dir}:Z',
-                '-w', work_dir,
+                '-v', f'{host_path}:{container_work_dir}:Z',
+                '-w', container_work_dir,
                 '-p', f"{settings.get('default_port', 8080)}:8080",
                 image, 'tail', '-f', '/dev/null'
             ],
@@ -238,11 +245,24 @@ def start_pod(user_name: str, project_name: str, project_path: Optional[str] = N
         )
         
         if create_result.returncode == 0:
+            # Install Python and Flask after creating pod (for Ubuntu images)
+            import time
+            time.sleep(2)
+            
+            # Install Python and Flask in the new pod
+            print(f"[PRE_LLM] Installing Python and Flask in new pod {pod_name}")
+            install_result = subprocess.run(
+                ['podman', 'exec', pod_name, 'sh', '-c', 
+                 'apt-get update && apt-get install -y python3 python3-pip python3-venv && pip3 install --break-system-packages flask'],
+                capture_output=True,
+                text=True,
+                timeout=180
+            )
+            print(f"[PRE_LLM] Python/Flask install result: {install_result.returncode}")
+            
             # Install requirements after creating
             req_result = {}
             if install_requirements and project_path:
-                # Wait a moment for pod to fully start
-                import time
                 time.sleep(1)
                 req_result = install_project_requirements(pod_name, project_path)
             
@@ -250,7 +270,7 @@ def start_pod(user_name: str, project_name: str, project_path: Optional[str] = N
                 "success": True,
                 "action": "created",
                 "pod_name": pod_name,
-                "message": f"Pod {pod_name} created successfully",
+                "message": f"Pod {pod_name} created successfully with Python/Flask",
                 "requirements": req_result
             }
         else:

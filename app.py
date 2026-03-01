@@ -416,6 +416,16 @@ async def run_looper(request: LooperRequest):
     # Load context files (debugger context)
     context_files = context_files_service.load_context_files()
     
+    # Ensure pre-llm context is always included in the system prompt
+    # This guarantees the pre-llm instructions are always part of LLM calls
+    pre_llm_context = context_files_service.get_pre_llm_context()
+    if pre_llm_context:
+        # Check if pre-llm is already in context_files (it should be, but ensure it's included)
+        has_pre_llm = any(ctx.get('type') == 'pre-llm' for ctx in context_files)
+        if not has_pre_llm:
+            # Add pre-llm context to the list if not present
+            context_files.append(pre_llm_context)
+    
     # Run the looper
     result = await run_looper_service(
         initial_prompt=prompt,

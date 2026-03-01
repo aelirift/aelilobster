@@ -9,6 +9,7 @@ Modules:
 - executor: Run code in pod
 - debugger: Handle errors and suggest fixes
 - tracer: Trace/logging functionality
+- execution_tree: Tree data structure for visualization
 """
 import uuid
 import subprocess
@@ -20,6 +21,14 @@ from .code_extractor import CodeExtractor, extract_code_blocks
 from .executor import Executor, execute_code_with_podman_check, ensure_project_requirements, list_project_files
 from .debugger import DebuggerWrapper, analyze_error, get_debugger_context
 from .tracer import TraceLogger, get_trace_logger, log_trace, clear_trace, TraceCallback
+from .execution_tree import (
+    ExecutionTree,
+    ExecutionTreeNode,
+    NodeState,
+    NodeType,
+    create_execution_tree,
+    build_tree_from_looper
+)
 
 
 # =============================================================================
@@ -171,7 +180,7 @@ async def _process_command_node(
     # Execute the code in pod
     log_trace('process', 'Starting Pod', {
         'container': container_name,
-        'image': settings.get('python_image', 'python:3-alpine') if not node.code.strip().startswith('#!') else settings.get('shell_image', 'alpine'),
+        'image': settings.get('python_image', 'python:3-slim') if not node.code.strip().startswith('#!') else settings.get('shell_image', 'ubuntu:latest'),
         'work_dir': project_path or settings.get('work_dir', '/tmp'),
         'keep_running': settings.get('keep_running', True),
         'code_preview': node.code[:100] + '...' if len(node.code) > 100 else node.code
