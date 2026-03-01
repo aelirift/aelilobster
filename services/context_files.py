@@ -92,7 +92,7 @@ def save_context_file(file_id: str, file_type: str, name: str, content: str) -> 
     Save a context file to disk as .md file.
     
     Args:
-        file_id: The file identifier
+        file_id: The file identifier (used to lookup existing file)
         file_type: The type of context file
         name: The name of the file
         content: The content to save
@@ -100,6 +100,22 @@ def save_context_file(file_id: str, file_type: str, name: str, content: str) -> 
     import logging
     logger = logging.getLogger(__name__)
     
+    # First, check if there's an existing file with this file_id
+    # If found, use its existing filename to preserve it (update mode)
+    existing_filepath = None
+    for md_file in CONTEXT_FILES_DIR.glob("*.md"):
+        if md_file.stem == file_id:
+            existing_filepath = md_file
+            break
+    
+    if existing_filepath:
+        # Update existing file - use its current filename
+        logger.info(f"[CONTEXT FILES SERVICE] Updating existing file: file_id={file_id}, filepath={existing_filepath}")
+        with open(existing_filepath, "w") as f:
+            f.write(content)
+        return
+    
+    # No existing file found - create new file
     # Sanitize name for filename - REMOVE any type suffix if present
     safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip()
     if not safe_name:
@@ -114,7 +130,7 @@ def save_context_file(file_id: str, file_type: str, name: str, content: str) -> 
     filename = f"{safe_name}_{file_type}.md"
     filepath = CONTEXT_FILES_DIR / filename
     
-    logger.info(f"[CONTEXT FILES SERVICE] Saving: file_id={file_id}, name={name}, type={file_type}, safe_name={safe_name}, filename={filename}")
+    logger.info(f"[CONTEXT FILES SERVICE] Creating new file: file_id={file_id}, name={name}, type={file_type}, safe_name={safe_name}, filename={filename}")
     
     with open(filepath, "w") as f:
         f.write(content)
@@ -198,6 +214,38 @@ def set_context_file_default(file_id: str) -> Dict[str, str]:
 # =============================================================================
 # Project Context Settings
 # =============================================================================
+
+def get_pre_llm_context() -> Optional[Dict[str, Any]]:
+    """
+    Get the default pre-llm context file content.
+    This ensures the pre-llm instructions are always included in LLM calls.
+    
+    Returns:
+        Dict with pre-llm context file data, or None if not found
+    """
+    files = load_context_files()
+    defaults = load_context_defaults()
+    
+    # Get the default pre-llm file name from defaults
+    default_pre_llm_name = defaults.get("pre-llm")
+    
+    # First try to find the default pre-llm file by name from defaults
+    if default_pre_llm_name:
+        for f in files:
+            if f.get("name") == default_pre_llm_name and f.get("type") == "pre-llm":
+                return f
+    
+    # Fallback: look for any file with type "pre-llm" or filename containing "pre-llm"
+    for f in files:
+        if f.get("type") == "pre-llm":
+            return f
+        # Also check if filename contains "pre-llm"
+        file_id = f.get("id", "")
+        if "pre-llm" in file_id.lower():
+            return f
+    
+    return None
+
 
 def load_project_context_settings(project_id: str) -> Dict[str, str]:
     """

@@ -38,24 +38,24 @@ body {
 
 /* Three column layout: sidebar, main chat, trace panel */
 .app-container.chat-mode {
-    display: grid;
-    grid-template-columns: var(--sidebar-width) 1fr var(--trace-width);
+    display: flex;
 }
 
 /* Left Navigation Panel */
 #leftNaviContainer {
     height: 100%;
+    width: var(--sidebar-width);
+    flex-shrink: 0;
 }
 
 .sidebar {
-    width: var(--sidebar-width);
+    width: 100%;
     height: 100%;
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     padding: 16px;
-    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -110,7 +110,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-width: 0;
+    min-width: 400px;
     height: 100%;
 }
 
@@ -744,6 +744,8 @@ body {
     flex-direction: column;
     flex-shrink: 0;
     overflow: hidden;
+    min-width: 200px;
+    max-width: 800px;
 }
 
 .trace-header {
@@ -1252,4 +1254,717 @@ body {
     color: #4caf50;
     font-size: 12px;
     font-weight: 500;
+}
+
+/* =============================================================================
+   Execution Tree Visualization
+   ============================================================================= */
+
+/* Tree container */
+.execution-tree-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Tree view toggle */
+.tree-toggle {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border);
+}
+
+.tree-toggle-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tree-toggle-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.tree-toggle-btn.active {
+    background-color: var(--accent);
+    color: white;
+}
+
+/* Clear tree button */
+.tree-clear-btn {
+    margin-left: auto;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tree-clear-btn:hover {
+    background-color: rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+}
+
+/* Tree visualization area */
+.tree-view {
+    flex: 1;
+    overflow: auto;
+    padding: 16px;
+}
+
+/* Tree node */
+.tree-node {
+    position: relative;
+    margin-bottom: 8px;
+}
+
+.tree-node-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tree-node-content:hover {
+    border-color: var(--accent);
+    background-color: rgba(233, 69, 96, 0.1);
+}
+
+/* Node states */
+.tree-node-content.incomplete {
+    border-left: 3px solid #f44336;
+}
+
+.tree-node-content.in-progress {
+    border-left: 3px solid #ff9800;
+    animation: pulse-border 1.5s infinite;
+}
+
+.tree-node-content.complete {
+    border-left: 3px solid #4caf50;
+}
+
+.tree-node-content.error {
+    border-left: 3px solid #f44336;
+}
+
+@keyframes pulse-border {
+    0%, 100% {
+        border-left-color: #ff9800;
+        box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4);
+    }
+    50% {
+        border-left-color: #ffc107;
+        box-shadow: 0 0 0 4px rgba(255, 152, 0, 0);
+    }
+}
+
+/* Node connector line */
+.tree-children {
+    margin-left: 24px;
+    padding-left: 12px;
+    border-left: 2px dashed var(--border);
+}
+
+.tree-node::before {
+    content: '';
+    position: absolute;
+    left: -12px;
+    top: 20px;
+    width: 10px;
+    height: 2px;
+    background-color: var(--border);
+}
+
+/* Node type indicator */
+.tree-node-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.tree-node-icon.prompt {
+    background-color: #9c27b0;
+    color: white;
+}
+
+.tree-node-icon.command {
+    background-color: #2196f3;
+    color: white;
+}
+
+.tree-node-icon.error {
+    background-color: #f44336;
+    color: white;
+}
+
+.tree-node-icon.fix {
+    background-color: #ff9800;
+    color: white;
+}
+
+/* Node details */
+.tree-node-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.tree-node-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.tree-node-preview {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+/* Node status badge */
+.tree-node-status {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tree-node-status.incomplete {
+    background-color: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+.tree-node-status.in-progress {
+    background-color: rgba(255, 152, 0, 0.2);
+    color: #ff9800;
+}
+
+.tree-node-status.complete {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.tree-node-status.error {
+    background-color: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+/* Node hover tooltip - disabled since we use expandable content now */
+.tree-node-tooltip {
+    display: none;
+}
+
+/* Tree empty state */
+.tree-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-secondary);
+}
+
+.tree-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.tree-empty-text {
+    font-size: 14px;
+}
+
+/* Trace log view (same as existing trace) */
+.trace-log-view {
+    display: none;
+    height: 100%;
+}
+
+.trace-log-view.active {
+    display: block;
+}
+
+/* Tree view */
+.tree-view.active {
+    display: block;
+}
+
+.tree-view:not(.active) {
+    display: none;
+}
+
+/* =============================================================================
+   Resizable Panel
+   ============================================================================= */
+
+/* Resize handle */
+.resize-handle {
+    width: 6px;
+    background-color: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+    position: relative;
+    z-index: 20;
+}
+
+.resize-handle:hover,
+.resize-handle.active {
+    background-color: var(--accent);
+}
+
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 30px;
+    background-color: var(--text-secondary);
+    border-radius: 2px;
+    opacity: 0.5;
+}
+
+.resize-handle:hover::after,
+.resize-handle.active::after {
+    opacity: 1;
+    background-color: white;
+}
+
+/* =============================================================================
+   Expandable Tree Node Details
+   ============================================================================= */
+
+/* Expand indicator */
+.tree-node-expand {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+/* Node details (expandable content) */
+.tree-node-details {
+    display: none;
+    padding: 12px;
+    margin-top: 8px;
+    background-color: var(--bg-secondary);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+/* Show details when node is expanded */
+.tree-node.expanded > .tree-node-details {
+    display: block;
+}
+
+/* Rotate expand indicator when expanded */
+.tree-node.expanded > .tree-node-content .tree-node-expand {
+    transform: rotate(90deg);
+}
+
+/* Detail sections */
+.tree-detail-section {
+    margin-bottom: 12px;
+}
+
+.tree-detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.tree-detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+/* Code details */
+.tree-detail-code-preview {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 60px;
+    overflow: hidden;
+}
+
+.tree-detail-code-full {
+    display: none;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+/* Show full content on expand */
+.tree-node.expanded .tree-detail-code-full {
+    display: block;
+}
+
+.tree-node.expanded .tree-detail-code-preview {
+    display: none;
+}
+
+/* Result details */
+.tree-detail-result-preview {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 80px;
+    overflow: hidden;
+}
+
+.tree-detail-result-full {
+    display: none;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: #4caf50;
+    background-color: var(--bg-primary);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.tree-node.expanded .tree-detail-result-full {
+    display: block;
+}
+
+.tree-node.expanded .tree-detail-result-preview {
+    display: none;
+}
+
+/* Error details */
+.tree-detail-error .tree-detail-label {
+    color: #f44336;
+}
+
+.tree-detail-error-preview {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 60px;
+    overflow: hidden;
+}
+
+.tree-detail-error-full {
+    display: none;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.tree-node.expanded .tree-detail-error-full {
+    display: block;
+}
+
+.tree-node.expanded .tree-detail-error-preview {
+    display: none;
+}
+
+/* Prompt details */
+.tree-detail-prompt-preview {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background-color: var(--bg-primary);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 40px;
+    overflow: hidden;
+}
+
+.tree-detail-prompt-full {
+    display: none;
+    font-size: 12px;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.tree-node.expanded .tree-detail-prompt-full {
+    display: block;
+}
+
+.tree-node.expanded .tree-detail-prompt-preview {
+    display: none;
+}
+
+/* Empty details */
+.tree-detail-empty {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* =============================================================================
+   Level Indicators for Tree Nodes
+   ============================================================================= */
+
+/* Level badge container - neutral styling for L# labels */
+.tree-node-level {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    /* Neutral gray color - level shown by indentation instead */
+    background-color: rgba(128, 128, 128, 0.2);
+    color: #9e9e9e;
+    border: 1px solid #9e9e9e;
+}
+
+/* Level badge in node content */
+.tree-node-content .tree-node-level {
+    margin-right: 8px;
+}
+
+/* LLM button in tree node */
+.tree-llm-btn {
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    background-color: rgba(156, 39, 176, 0.2);
+    color: #9c27b0;
+    border: 1px solid #9c27b0;
+    cursor: pointer;
+    margin-right: 8px;
+    transition: all 0.2s ease;
+}
+
+.tree-llm-btn:hover {
+    background-color: rgba(156, 39, 176, 0.4);
+}
+
+/* LLM section in tree details */
+.tree-llm-section {
+    background-color: rgba(156, 39, 176, 0.1);
+    border: 1px solid rgba(156, 39, 176, 0.3);
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.tree-llm-section .tree-detail-label {
+    color: #9c27b0;
+}
+
+.tree-llm-content {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 11px;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    padding: 8px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+/* Indentation based on level - more indentation per level */
+.tree-children {
+    margin-left: 24px;
+    padding-left: 16px;
+    border-left: 2px solid var(--border);
+}
+
+/* Extra indentation for deeper levels - 8px per level */
+.tree-node[data-level="1"] > .tree-children {
+    margin-left: 32px;
+}
+
+.tree-node[data-level="2"] > .tree-children {
+    margin-left: 40px;
+}
+
+.tree-node[data-level="3"] > .tree-children {
+    margin-left: 48px;
+}
+
+.tree-node[data-level="4"] > .tree-children {
+    margin-left: 56px;
+}
+
+.tree-node[data-level="5"] > .tree-children {
+    margin-left: 64px;
+}
+
+.tree-node[data-level="6"] > .tree-children {
+    margin-left: 72px;
+}
+
+.tree-node[data-level="7"] > .tree-children {
+    margin-left: 80px;
+}
+
+/* Trace Log View */
+.trace-log-view {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.trace-log-view.active {
+    display: block;
+}
+
+/* Original trace content when moved to log view */
+.original-trace-content {
+    display: block !important;
+}
+
+.trace-log-view .trace-entry {
+    margin-bottom: 12px;
+    padding: 8px;
+    border-radius: 6px;
+    background-color: var(--bg-primary);
+}
+
+.trace-log-view .trace-time {
+    color: var(--text-secondary);
+    font-size: 10px;
+    margin-bottom: 4px;
+}
+
+.trace-log-view .trace-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+.trace-log-view .trace-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.trace-log-view .trace-icon.input {
+    background-color: rgba(233, 69, 96, 0.2);
+    color: var(--accent);
+}
+
+.trace-log-view .trace-icon.process {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.trace-log-view .trace-icon.output {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.trace-log-view .trace-icon.error {
+    background-color: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+.trace-log-view .trace-text {
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.trace-log-view .trace-data {
+    background-color: var(--bg-tertiary);
+    padding: 8px;
+    border-radius: 4px;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 150px;
+    overflow-y: auto;
 }

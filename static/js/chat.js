@@ -583,11 +583,13 @@ async function loadState() {
     await loadProjects();
     
     // Now that we have a valid project, load the saved mode
+    console.log('[DEBUG] loadState: BEFORE loadSavedMode, terminalMode =', terminalMode);
     loadSavedMode();
+    console.log('[DEBUG] loadState: AFTER loadSavedMode, terminalMode =', terminalMode);
     
-    // Save mode to ensure it's persisted with the correct project key
-    saveMode();
-    console.log('[DEBUG] loadState: mode persisted, terminalMode =', terminalMode);
+    // FIX: Removed saveMode() call here - it was overwriting the loaded mode!
+    // saveMode() is now only called when user explicitly changes mode (in enterTerminalMode/exitTerminalMode)
+    console.log('[DEBUG] loadState: NOT calling saveMode() to preserve loaded value');
     
     // Update UI based on loaded mode
     const modeToggle = document.getElementById('modeToggle');
@@ -1033,6 +1035,14 @@ async function sendMessage() {
     const content = messageInput.value.trim();
     if (!content || isLoading) return;
     
+    // Detect if this is a code/command request
+    const useLooper = isCodeRequest(content);
+    
+    // Create execution tree for looper requests
+    if (useLooper) {
+        createExecutionTree(content);
+    }
+    
     // Handle terminal mode
     if (!chatMode && terminalMode) {
         if (terminalWaitingForInput) {
@@ -1121,6 +1131,19 @@ async function sendMessage() {
             } else {
                 // Add trace entry in real-time
                 addTrace(entry.type, entry.label, entry.data);
+                
+                // Update execution tree in real-time based on trace entries
+                // Force immediate re-render for real-time updates
+                updateExecutionTreeFromTrace(entry);
+                
+                // Force DOM update by accessing the tree view element
+                const treeView = document.getElementById('treeView');
+                if (treeView) {
+                    // Trigger reflow to ensure visual update
+                    treeView.style.display = 'none';
+                    treeView.offsetHeight; // Force reflow
+                    treeView.style.display = 'block';
+                }
             }
         };
         
@@ -1220,6 +1243,12 @@ async function sendMessage() {
                     level: node.level
                 });
             });
+            
+            // Update execution tree with response data
+            updateExecutionTreeFromResponse({
+                prompt: content,
+                command_tree: data.command_tree
+            });
         }
         
         // Display trace entries from looper (append, don't overwrite!)
@@ -1310,6 +1339,879 @@ messagesContainer.addEventListener('scroll', () => {
         userHasScrolledUp = true;
     }
 });
+
+// =============================================================================
+// Execution Tree Visualization
+// =============================================================================
+
+// Execution tree state
+let executionTree = null;
+let currentViewMode = 'tree'; // 'tree' or 'trace'
+
+// Initialize execution tree
+function initExecutionTree() {
+    // Create tree container in trace panel
+    const tracePanel = document.getElementById('traceContent');
+    if (!tracePanel) return;
+    
+    // Check if tree container already exists
+    let treeContainer = document.getElementById('executionTreeContainer');
+    if (!treeContainer) {
+        // Create tree toggle buttons
+        const toggleDiv = document.createElement('div');
+        toggleDiv.className = 'tree-toggle';
+        toggleDiv.innerHTML = `
+            <button class="tree-toggle-btn active" data-view="tree" onclick="switchTreeView('tree')">
+                🌳 Tree
+            </button>
+            <button class="tree-toggle-btn" data-view="trace" onclick="switchTreeView('trace')">
+                📋 Log
+            </button>
+            <button class="tree-clear-btn" onclick="clearExecutionTree()" title="Clear execution tree">
+                🗑️ Clear
+            </button>
+        `;
+        
+        // Create tree container
+        treeContainer = document.createElement('div');
+        treeContainer.id = 'executionTreeContainer';
+        treeContainer.className = 'execution-tree-container';
+        
+        // Create tree view
+        const treeView = document.createElement('div');
+        treeView.id = 'treeView';
+        treeView.className = 'tree-view active';
+        treeView.innerHTML = `
+            <div class="tree-empty">
+                <div class="tree-empty-icon">🌳</div>
+                <div class="tree-empty-text">No execution tree yet</div>
+            </div>
+        `;
+        
+        // Create trace log view - wraps the actual trace content
+        const traceLogView = document.createElement('div');
+        traceLogView.id = 'traceLogView';
+        traceLogView.className = 'trace-log-view';
+        
+        // The traceContent stays in place but we control its visibility via CSS
+        // No need to clone or move - just use the existing element
+        const traceContent = document.getElementById('traceContent');
+        if (traceContent) {
+            traceContent.classList.add('original-trace-content');
+        }
+        
+        treeContainer.appendChild(toggleDiv);
+        treeContainer.appendChild(treeView);
+        treeContainer.appendChild(traceLogView);
+        
+        // Insert after the header if it exists, otherwise prepend
+        const traceHeader = tracePanel.querySelector('.panel-header') || tracePanel.previousElementSibling;
+        if (traceHeader && traceHeader.parentNode) {
+            traceHeader.parentNode.insertBefore(treeContainer, traceHeader.nextSibling);
+        } else {
+            tracePanel.parentNode.insertBefore(treeContainer, tracePanel);
+        }
+    }
+}
+
+// Switch between tree view and trace log view
+function switchTreeView(mode) {
+    currentViewMode = mode;
+    
+    // Update toggle buttons
+    const buttons = document.querySelectorAll('.tree-toggle-btn');
+    buttons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === mode);
+    });
+    
+    // Show/hide views
+    const treeView = document.getElementById('treeView');
+    const traceLogView = document.getElementById('traceLogView');
+    const traceContent = document.getElementById('traceContent');
+    
+    if (mode === 'tree') {
+        if (treeView) treeView.classList.add('active');
+        if (traceLogView) traceLogView.classList.remove('active');
+        // Show original trace content
+        if (traceContent) {
+            traceContent.style.display = 'block';
+        }
+    } else {
+        // Log view - show the trace content in the log view area
+        if (treeView) treeView.classList.remove('active');
+        if (traceLogView) traceLogView.classList.add('active');
+        // Move trace content to log view for display
+        if (traceContent && traceLogView) {
+            // Ensure trace is visible
+            traceContent.style.display = 'block';
+            // Make sure it's in the log view container
+            if (!traceLogView.contains(traceContent)) {
+                traceLogView.appendChild(traceContent);
+            }
+        }
+    }
+}
+
+// Create execution tree from user prompt
+function createExecutionTree(prompt) {
+    executionTree = {
+        rootId: null,
+        nodes: {},
+        currentPrompt: prompt,
+        l0Collapsed: false // L0 starts expanded
+    };
+    
+    // Create root prompt node (L0 = User prompt only)
+    const rootNode = {
+        id: 'prompt-' + Date.now(),
+        type: 'prompt',
+        state: 'in_progress',
+        prompt: prompt,
+        code: null,
+        language: null,
+        result: null,
+        error: null,
+        parentId: null,
+        children: [],
+        level: 0, // L0 = User prompt only
+        timestamp: new Date().toISOString(),
+        collapsed: false,
+        showLLM: false,
+        llmResponse: null // Will store the LLM response
+    };
+    
+    executionTree.rootId = rootNode.id;
+    executionTree.nodes[rootNode.id] = rootNode;
+    
+    renderExecutionTree();
+    return rootNode;
+}
+
+// Add command node to execution tree
+// Level scheme: L0 = User prompt (root), L1 = First level commands, L2 = Children of L1, etc.
+function addCommandNode(code, language = 'python', parentId = null, customLevel = null) {
+    if (!executionTree) return null;
+    
+    const parent = parentId ? executionTree.nodes[parentId] : 
+        Object.values(executionTree.nodes).find(n => n.type === 'prompt');
+    
+    if (!parent) return null;
+    
+    // Level scheme: 
+    // - Root (prompt) is L0
+    // - First level children (commands from LLM) are L1
+    // - L2+ are children of L1+ nodes
+    let nodeLevel;
+    if (customLevel !== null) {
+        // Use provided level (but ensure commands are at least L1)
+        nodeLevel = Math.max(customLevel, 1);
+    } else if (parent.type === 'prompt') {
+        // Direct children of prompt are L1
+        nodeLevel = 1;
+    } else {
+        // Children of commands are one level deeper than parent
+        nodeLevel = parent.level + 1;
+    }
+    
+    const node = {
+        id: 'cmd-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+        type: 'command',
+        state: 'in_progress',
+        prompt: null,
+        code: code,
+        language: language,
+        result: null,
+        error: null,
+        parentId: parent.id,
+        children: [],
+        level: nodeLevel,
+        timestamp: new Date().toISOString(),
+        collapsed: false,
+        showLLM: false,
+        llmResponse: null // Store LLM response for this command
+    };
+    
+    executionTree.nodes[node.id] = node;
+    parent.children.push(node.id);
+    
+    // Force immediate re-render for real-time updates
+    renderExecutionTree();
+    return node;
+}
+
+// Mark node as complete
+function markNodeComplete(nodeId, result = null) {
+    if (!executionTree || !executionTree.nodes[nodeId]) return;
+    
+    const node = executionTree.nodes[nodeId];
+    node.state = 'complete';
+    if (result) {
+        node.result = result;
+    }
+    
+    renderExecutionTree();
+}
+
+// Mark node as error
+function markNodeError(nodeId, error) {
+    if (!executionTree || !executionTree.nodes[nodeId]) return;
+    
+    const node = executionTree.nodes[nodeId];
+    node.state = 'error';
+    node.error = error;
+    
+    // Add error child node
+    const errorNode = {
+        id: 'error-' + Date.now(),
+        type: 'error',
+        state: 'error',
+        prompt: null,
+        code: null,
+        language: null,
+        result: null,
+        error: error,
+        parentId: node.id,
+        children: [],
+        level: node.level + 1,
+        timestamp: new Date().toISOString(),
+        collapsed: false,
+        showLLM: false
+    };
+    
+    executionTree.nodes[errorNode.id] = errorNode;
+    node.children.push(errorNode.id);
+    
+    renderExecutionTree();
+}
+
+// Render execution tree
+function renderExecutionTree() {
+    const treeView = document.getElementById('treeView');
+    if (!treeView || !executionTree) return;
+    
+    const rootNode = executionTree.nodes[executionTree.rootId];
+    if (!rootNode) {
+        treeView.innerHTML = `
+            <div class="tree-empty">
+                <div class="tree-empty-icon">🌳</div>
+                <div class="tree-empty-text">No execution tree yet</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Render the tree
+    treeView.innerHTML = renderTreeNode(rootNode, executionTree);
+}
+
+// Force immediate re-render of execution tree (for real-time updates)
+function forceRenderExecutionTree() {
+    const treeView = document.getElementById('treeView');
+    if (!treeView) return;
+    
+    // Force DOM reflow to ensure visual update
+    treeView.style.display = 'none';
+    treeView.offsetHeight; // Force reflow
+    treeView.style.display = 'block';
+    
+    // Re-render the tree
+    renderExecutionTree();
+}
+
+// Get level badge class based on node level - neutral styling (indentation shows level)
+function getLevelBadgeClass(level) {
+    // Return neutral class - indentation and L# label show the level, not color
+    return 'level-neutral';
+}
+
+// Render a single tree node recursively
+function renderTreeNode(node, tree) {
+    const stateClass = node.state;
+    const typeIcon = getNodeIcon(node.type);
+    const statusLabel = getStatusLabel(node.state);
+    const label = getNodeLabel(node);
+    const preview = getNodePreview(node);
+    
+    // Get level from node (default to 0 if not set)
+    const nodeLevel = node.level !== undefined ? node.level : 0;
+    const levelBadgeClass = getLevelBadgeClass(nodeLevel);
+    
+    // Build expandable details content
+    const detailsContent = renderNodeDetails(node);
+    
+    // Determine if this node should collapse children based on level
+    // L0 collapses all, L1+ collapse their own children
+    const isL0 = nodeLevel === 0;
+    
+    // For L0, use a global collapsed state; for L1+, use per-node state
+    let isExpanded = true;
+    if (isL0) {
+        isExpanded = !tree.l0Collapsed;
+    } else {
+        isExpanded = !node.collapsed;
+    }
+    
+    // Add LLM prompt/response button for root prompt node
+    const llmButton = node.type === 'prompt' ? 
+        `<button class="tree-llm-btn" onclick="event.stopPropagation(); toggleLLMPrompt('${node.id}')" title="View LLM Prompt/Response">🤖 LLM</button>` 
+        : '';
+    
+    let html = `
+        <div class="tree-node" data-node-id="${node.id}" data-level="${nodeLevel}">
+            <div class="tree-node-content ${stateClass}" onclick="toggleTreeNode('${node.id}', ${nodeLevel})">
+                <div class="tree-node-expand">${node.children && node.children.length > 0 ? (isExpanded ? '▼' : '▶') : '•'}</div>
+                <div class="tree-node-icon ${node.type}">${typeIcon}</div>
+                <div class="tree-node-level ${levelBadgeClass}">L${nodeLevel}</div>
+                <div class="tree-node-info">
+                    <div class="tree-node-label">${escapeHtml(label)}</div>
+                    <div class="tree-node-preview">${escapeHtml(preview)}</div>
+                </div>
+                ${llmButton}
+                <span class="tree-node-status ${stateClass}">${statusLabel}</span>
+            </div>
+            <div class="tree-node-details">
+                ${detailsContent}
+            </div>
+    `;
+    
+    // Render children - only show if expanded
+    if (node.children && node.children.length > 0 && isExpanded) {
+        html += '<div class="tree-children">';
+        node.children.forEach(childId => {
+            const childNode = tree.nodes[childId];
+            if (childNode) {
+                html += renderTreeNode(childNode, tree);
+            }
+        });
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+// Render expandable details for a node
+function renderNodeDetails(node) {
+    let html = '';
+    
+    // LLM section for root prompt node (when LLM button is clicked)
+    if (node.type === 'prompt' && node.showLLM) {
+        html += renderLLMDetails(node);
+    }
+    
+    // Code section (truncated in preview, full in expanded)
+    if (node.code) {
+        const codePreview = node.code.split('\n').slice(0, 3).join('\n');
+        const codeFull = node.code;
+        const isTruncated = node.code.split('\n').length > 3;
+        
+        html += `
+            <div class="tree-detail-section">
+                <div class="tree-detail-label">Code:</div>
+                <div class="tree-detail-code-preview">${escapeHtml(codePreview)}${isTruncated ? '\n...' : ''}</div>
+                ${isTruncated ? `<div class="tree-detail-code-full">${escapeHtml(codeFull)}</div>` : ''}
+            </div>
+        `;
+    }
+    
+    // Result section
+    if (node.result) {
+        const resultPreview = node.result.split('\n').slice(0, 5).join('\n');
+        const resultFull = node.result;
+        const isTruncated = node.result.split('\n').length > 5;
+        
+        html += `
+            <div class="tree-detail-section">
+                <div class="tree-detail-label">Result:</div>
+                <div class="tree-detail-result-preview">${escapeHtml(resultPreview)}${isTruncated ? '\n... (' + node.result.split('\n').length + ' lines total)' : ''}</div>
+                ${isTruncated ? `<div class="tree-detail-result-full">${escapeHtml(resultFull)}</div>` : ''}
+            </div>
+        `;
+    }
+    
+    // Error section
+    if (node.error) {
+        const errorPreview = node.error.split('\n').slice(0, 3).join('\n');
+        const errorFull = node.error;
+        const isTruncated = node.error.split('\n').length > 3;
+        
+        html += `
+            <div class="tree-detail-section tree-detail-error">
+                <div class="tree-detail-label">Error:</div>
+                <div class="tree-detail-error-preview">${escapeHtml(errorPreview)}${isTruncated ? '\n...' : ''}</div>
+                ${isTruncated ? `<div class="tree-detail-error-full">${escapeHtml(errorFull)}</div>` : ''}
+            </div>
+        `;
+    }
+    
+    // Prompt section for root node (always show, not just when LLM clicked)
+    if (node.type === 'prompt' && node.prompt) {
+        const promptPreview = node.prompt.split('\n').slice(0, 2).join('\n');
+        const promptFull = node.prompt;
+        const isTruncated = node.prompt.split('\n').length > 2;
+        
+        html += `
+            <div class="tree-detail-section">
+                <div class="tree-detail-label">Prompt:</div>
+                <div class="tree-detail-prompt-preview">${escapeHtml(promptPreview)}${isTruncated ? '\n...' : ''}</div>
+                ${isTruncated ? `<div class="tree-detail-prompt-full">${escapeHtml(promptFull)}</div>` : ''}
+            </div>
+        `;
+    }
+    
+    return html || '<div class="tree-detail-empty">No details</div>';
+}
+
+// Get icon for node type
+function getNodeIcon(type) {
+    switch (type) {
+        case 'prompt': return '?';
+        case 'command': return '>';
+        case 'error': return '!';
+        case 'fix': return '+';
+        default: return '•';
+    }
+}
+
+// Get status label
+function getStatusLabel(state) {
+    switch (state) {
+        case 'incomplete': return 'Pending';
+        case 'in_progress': return 'Running';
+        case 'complete': return 'Done';
+        case 'error': return 'Failed';
+        default: return state;
+    }
+}
+
+// Get node label
+function getNodeLabel(node) {
+    switch (node.type) {
+        case 'prompt': return 'User Prompt';
+        case 'command': 
+            return `Command (${node.language || 'code'})`;
+        case 'error': return 'Error';
+        case 'fix': return 'Fix Attempt';
+        default: return 'Node';
+    }
+}
+
+// Get node preview text
+function getNodePreview(node) {
+    if (node.prompt) {
+        return node.prompt.substring(0, 50) + (node.prompt.length > 50 ? '...' : '');
+    }
+    if (node.code) {
+        const firstLine = node.code.split('\n')[0];
+        return firstLine.substring(0, 40) + (firstLine.length > 40 ? '...' : '');
+    }
+    if (node.error) {
+        return node.error.substring(0, 40) + (node.error.length > 40 ? '...' : '');
+    }
+    return '';
+}
+
+// Render tooltip content
+function renderTooltipContent(node) {
+    let html = `<div class="tree-tooltip-title">${getNodeLabel(node)}</div>`;
+    
+    if (node.code) {
+        html += `<div class="tree-tooltip-code">${escapeHtml(node.code)}</div>`;
+    }
+    
+    if (node.result) {
+        const resultPreview = node.result.substring(0, 200);
+        html += `<div class="tree-tooltip-result">Result: ${escapeHtml(resultPreview)}${node.result.length > 200 ? '...' : ''}</div>`;
+    }
+    
+    if (node.error) {
+        const errorPreview = node.error.substring(0, 200);
+        html += `<div class="tree-tooltip-error">${escapeHtml(errorPreview)}${node.error.length > 200 ? '...' : ''}</div>`;
+    }
+    
+    return html;
+}
+
+// Toggle tree node expansion - handles collapsible by level
+// L0 (root) toggles all children (global collapse/expand)
+// L1+ nodes collapse ALL their descendants when clicked
+function toggleTreeNode(nodeId, nodeLevel) {
+    if (!executionTree) return;
+    
+    const node = executionTree.nodes[nodeId];
+    if (!node) return;
+    
+    // L0 (root) toggles all children (global collapse/expand)
+    if (nodeLevel === 0) {
+        // Toggle global L0 collapsed state
+        executionTree.l0Collapsed = !executionTree.l0Collapsed;
+    } else {
+        // L1+ nodes: collapse/expand ALL descendants
+        // When collapsed = true, hide ALL children and grandchildren
+        // When collapsed = false, show all children
+        const newCollapsedState = !node.collapsed;
+        node.collapsed = newCollapsedState;
+        
+        // Recursively set collapsed state for all descendants
+        function setDescendantsCollapsed(parentNode, collapsed) {
+            if (parentNode.children && parentNode.children.length > 0) {
+                parentNode.children.forEach(childId => {
+                    const child = executionTree.nodes[childId];
+                    if (child) {
+                        child.collapsed = collapsed;
+                        setDescendantsCollapsed(child, collapsed);
+                    }
+                });
+            }
+        }
+        
+        // Apply to all descendants
+        setDescendantsCollapsed(node, newCollapsedState);
+    }
+    
+    renderExecutionTree();
+}
+
+// Toggle LLM prompt/response view
+function toggleLLMPrompt(nodeId) {
+    if (!executionTree) return;
+    
+    const node = executionTree.nodes[nodeId];
+    if (!node) return;
+    
+    // Toggle LLM view mode
+    node.showLLM = !node.showLLM;
+    
+    // Re-render to show/hide LLM details
+    renderExecutionTree();
+}
+
+// Get additional details for LLM prompt/response
+function renderLLMDetails(node) {
+    if (!node.showLLM || node.type !== 'prompt') return '';
+    
+    // Build LLM input/output display
+    let html = `
+        <div class="tree-detail-section tree-llm-section">
+            <div class="tree-detail-label">🤖 LLM Prompt:</div>
+            <div class="tree-llm-content">${escapeHtml(node.prompt || 'N/A')}</div>
+        </div>
+    `;
+    
+    // If we have LLM response stored, show it
+    if (node.llmResponse) {
+        html += `
+            <div class="tree-detail-section tree-llm-section">
+                <div class="tree-detail-label">📤 LLM Response:</div>
+                <div class="tree-llm-content">${escapeHtml(node.llmResponse)}</div>
+            </div>
+        `;
+    }
+    
+    return html;
+}
+
+// Update execution tree from looper response
+// This is called when the looper finishes and returns the final response
+function updateExecutionTreeFromResponse(response) {
+    if (!response || !response.command_tree) return;
+    
+    // If we don't have a tree yet, create one from prompt
+    if (!executionTree && response.prompt) {
+        createExecutionTree(response.prompt);
+    }
+    
+    if (!executionTree) return;
+    
+    // Update root node to complete and store LLM response
+    const rootNode = executionTree.nodes[executionTree.rootId];
+    if (rootNode) {
+        rootNode.state = 'complete';
+        // Store the full LLM response from the response
+        if (response.response) {
+            rootNode.llmResponse = response.response;
+        }
+    }
+    
+    // Add command nodes from response
+    // Level scheme: L0 = prompt, L1 = first level commands, L2 = children of L1
+    response.command_tree.forEach(cmd => {
+        const existingNode = Object.values(executionTree.nodes).find(
+            n => n.code && n.code.substring(0, 50) === (cmd.code || '').substring(0, 50)
+        );
+        
+        // Get level from command tree node
+        // Commands from LLM are at level 1 (L1)
+        // Children of commands are at level 2+ (L2, L3, etc.)
+        let cmdLevel = 1; // Default to L1 for first level commands
+        if (cmd.level !== undefined) {
+            // Ensure commands are at least L1
+            cmdLevel = Math.max(cmd.level, 1);
+        }
+        
+        if (existingNode) {
+            // Update existing node
+            if (cmd.success) {
+                markNodeComplete(existingNode.id, cmd.result);
+            } else {
+                markNodeError(existingNode.id, cmd.error || 'Unknown error');
+            }
+        } else {
+            // Create new node with the specified level
+            // Parent is at level cmdLevel - 1
+            const parentNode = findNodeAtLevel(executionTree.rootId, cmdLevel - 1);
+            const newNode = addCommandNode(cmd.code, cmd.language, parentNode ? parentNode.id : executionTree.rootId, cmdLevel);
+            if (newNode) {
+                if (cmd.success) {
+                    markNodeComplete(newNode.id, cmd.result);
+                } else {
+                    markNodeError(newNode.id, cmd.error || 'Unknown error');
+                }
+            }
+        }
+    });
+    
+    // Force immediate re-render
+    renderExecutionTree();
+}
+
+// Clear execution tree - removes all nodes and resets state
+function clearExecutionTree() {
+    // Clear all nodes from the tree
+    executionTree = null;
+    
+    // Update the tree view to show empty state
+    const treeView = document.getElementById('treeView');
+    if (treeView) {
+        treeView.innerHTML = `
+            <div class="tree-empty">
+                <div class="tree-empty-icon">🌳</div>
+                <div class="tree-empty-text">No execution tree yet</div>
+            </div>
+        `;
+    }
+    
+    // Clear any stored tree state from localStorage
+    const treeStateKey = getProjectStorageKey('executionTree');
+    localStorage.removeItem(treeStateKey);
+    
+    // Add trace entry for clarity
+    addTrace('terminal', 'Execution Tree', 'Tree cleared');
+}
+
+// Update execution tree from real-time trace entries
+// This is called on each SSE message for real-time updates
+function updateExecutionTreeFromTrace(entry) {
+    if (!executionTree) {
+        // Create a new execution tree if none exists
+        const prompt = entry.data?.prompt || 'Execution';
+        createExecutionTree(prompt);
+    }
+    
+    if (!executionTree) return;
+    
+    // Process different trace entry types to update tree
+    const entryType = entry.type;
+    const entryLabel = entry.label;
+    const entryData = entry.data;
+    
+    // Get level from trace entry if available (default to 1 for commands)
+    const entryLevel = entryData?.level !== undefined ? Math.max(entryData.level, 1) : 1;
+    
+    // Handle LLM Response - capture and store it
+    if (entryType === 'output' && entryLabel === 'LLM Response') {
+        // Store the LLM response in the root prompt node
+        const rootNode = executionTree.nodes[executionTree.rootId];
+        if (rootNode) {
+            // Get full response from data if available, otherwise use preview
+            const fullResponse = entryData?.response || entryData?.preview || 'No response';
+            rootNode.llmResponse = fullResponse;
+        }
+    }
+    
+    if (entryType === 'process' && entryData?.code) {
+        // New command being executed
+        const existingNode = Object.values(executionTree.nodes).find(
+            n => n.code && n.code.substring(0, 50) === (entryData.code || '').substring(0, 50)
+        );
+        
+        if (!existingNode) {
+            // Create new command node with level from trace entry (ensure at least L1)
+            const language = entryData.language || 'python';
+            const nodeLevel = Math.max(entryLevel, 1);
+            const parentNode = findNodeAtLevel(executionTree.rootId, nodeLevel - 1);
+            addCommandNode(entryData.code, language, parentNode ? parentNode.id : executionTree.rootId, nodeLevel);
+        }
+    }
+    
+    if (entryType === 'output' && entryData?.result) {
+        // Command completed with result
+        // Try to find the node at the matching level
+        const targetNode = findNodeAtLevel(executionTree.rootId, entryLevel);
+        if (targetNode && targetNode.children.length > 0) {
+            // Get the last command node (most recent)
+            const lastChildId = targetNode.children[targetNode.children.length - 1];
+            const lastChild = executionTree.nodes[lastChildId];
+            if (lastChild && lastChild.state === 'in_progress') {
+                markNodeComplete(lastChildId, entryData.result);
+            }
+        } else {
+            // Fallback to root's last child
+            const rootNode = executionTree.nodes[executionTree.rootId];
+            if (rootNode && rootNode.children.length > 0) {
+                const lastChildId = rootNode.children[rootNode.children.length - 1];
+                const lastChild = executionTree.nodes[lastChildId];
+                if (lastChild && lastChild.state === 'in_progress') {
+                    markNodeComplete(lastChildId, entryData.result);
+                }
+            }
+        }
+    }
+    
+    if (entryType === 'error' && entryData?.error) {
+        // Command failed with error
+        const targetNode = findNodeAtLevel(executionTree.rootId, entryLevel);
+        if (targetNode && targetNode.children.length > 0) {
+            const lastChildId = targetNode.children[targetNode.children.length - 1];
+            const lastChild = executionTree.nodes[lastChildId];
+            if (lastChild && lastChild.state === 'in_progress') {
+                markNodeError(lastChildId, entryData.error);
+            }
+        } else {
+            // Fallback to root's last child
+            const rootNode = executionTree.nodes[executionTree.rootId];
+            if (rootNode && rootNode.children.length > 0) {
+                const lastChildId = rootNode.children[rootNode.children.length - 1];
+                const lastChild = executionTree.nodes[lastChildId];
+                if (lastChild && lastChild.state === 'in_progress') {
+                    markNodeError(lastChildId, entryData.error);
+                }
+            }
+        }
+    }
+    
+    // Force immediate re-render for real-time updates
+    renderExecutionTree();
+    
+    // Also force DOM update by triggering a reflow
+    const treeView = document.getElementById('treeView');
+    if (treeView) {
+        // Use requestAnimationFrame for smooth real-time updates
+        requestAnimationFrame(() => {
+            treeView.dispatchEvent(new Event('tree-updated'));
+        });
+    }
+}
+
+// Find a node at a specific level in the tree
+function findNodeAtLevel(rootId, targetLevel) {
+    if (!executionTree) return null;
+    
+    const root = executionTree.nodes[rootId];
+    if (!root) return null;
+    
+    // If target is 0, return root
+    if (targetLevel === 0) return root;
+    
+    // Find children at the target level
+    const findAtLevel = (node, level) => {
+        if (level === targetLevel) return node;
+        if (!node.children || node.children.length === 0) return null;
+        
+        for (const childId of node.children) {
+            const child = executionTree.nodes[childId];
+            if (child) {
+                const result = findAtLevel(child, level + 1);
+                if (result) return result;
+            }
+        }
+        return null;
+    };
+    
+    return findAtLevel(root, 0);
+}
+
+// Make functions globally available
+window.switchTreeView = switchTreeView;
+window.toggleTreeNode = toggleTreeNode;
+window.toggleLLMPrompt = toggleLLMPrompt;
+window.clearExecutionTree = clearExecutionTree;
+
+// =============================================================================
+// Resizable Chat Panel
+// =============================================================================
+
+// Initialize resizable panel
+function initResizablePanel() {
+    const appContainer = document.querySelector('.app-container');
+    const tracePanel = document.querySelector('.trace-panel');
+    const mainContent = document.querySelector('.main-content');
+    
+    if (!appContainer || !tracePanel || !mainContent) return;
+    
+    // Create resize handle
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    resizeHandle.title = 'Drag to resize';
+    
+    // Insert between main content and trace panel
+    appContainer.insertBefore(resizeHandle, tracePanel);
+    
+    // Load saved width from localStorage
+    const savedWidth = localStorage.getItem('tracePanelWidth');
+    if (savedWidth) {
+        const width = parseInt(savedWidth, 10);
+        if (width > 200 && width < 800) {
+            tracePanel.style.width = width + 'px';
+            document.documentElement.style.setProperty('--trace-width', width + 'px');
+        }
+    }
+    
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+    
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = tracePanel.offsetWidth;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        resizeHandle.classList.add('active');
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        const delta = startX - e.clientX;
+        const newWidth = Math.max(200, Math.min(800, startWidth + delta));
+        
+        tracePanel.style.width = newWidth + 'px';
+        document.documentElement.style.setProperty('--trace-width', newWidth + 'px');
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            resizeHandle.classList.remove('active');
+            
+            // Save width to localStorage
+            localStorage.setItem('tracePanelWidth', tracePanel.offsetWidth);
+        }
+    });
+}
+
+// Initialize execution tree on load
+document.addEventListener('DOMContentLoaded', function() {
+    initExecutionTree();
+    initResizablePanel();
+});
+
+// =============================================================================
+// End Execution Tree Visualization
+// =============================================================================
 
 // Load state on page load (includes loading projects, mode, messages, and trace entries)
 loadState();

@@ -65,9 +65,34 @@ class DebuggerWrapper:
         Returns:
             Prompt string for LLM
         """
-        return f"""The previous code had an error:
+        # Add context about the environment and common fixes
+        environment_context = """
+Environment: The code runs in an Ubuntu container.
+- Use 'apt-get install' to install system packages (e.g., 'apt-get install -y python3 python3-pip')
+- Use 'pip3' for Python packages
+- For Python web servers, install flask with 'pip3 install flask'
+- ALWAYS add required packages to requirements.md in the project for persistence!
+"""
+        
+        # Check if this is a "not found" error that might need package installation
+        needs_install = False
+        if "python" in error.lower() and "not found" in error.lower():
+            needs_install = True
+            environment_context += """
+IMPORTANT: Python is not installed in the container. Your fix MUST first install Python before running Python code.
+For Ubuntu, use: ```shell\napt-get update && apt-get install -y python3 python3-pip\n```
+Then run your Python code in a SEPARATE code block.
 
-Error: {error}
+ALWAYS add the packages to requirements.md so they persist across restarts!
+"""
+        
+        return f"""You are a debugging assistant. Fix the error in the previous code.
+
+{environment_context}
+
+Error:
+{error}
+
 Error Type: {error_type}
 
 Original Code:
@@ -75,8 +100,32 @@ Original Code:
 {original_code}
 ```
 
-Please provide corrected code that fixes this error. Respond with only the corrected code in a code block.
-Do not include explanations - just the fixed code."""
+IMPORTANT INSTRUCTIONS:
+1. If the error is "python not found" or similar, you MUST first install Python/dependencies in a shell code block BEFORE running Python code
+2. If installing packages, do it in a SEPARATE shell code block from your main code
+3. Install all required dependencies first, then run the actual code
+4. ALWAYS add required packages to requirements.md in the project directory for persistence!
+
+When you need to install packages, create/update requirements.md with the needed packages, for example:
+```markdown
+# Project Requirements
+flask
+requests
+```
+
+Provide the fix as code blocks. If you need to install something first, include a shell code block for installation:
+```shell
+# Install commands here
+apt-get update && apt-get install -y python3 python3-pip
+pip3 install flask
+# Add to requirements.md
+echo -e "flask\\nrequests" > requirements.md
+```
+
+Then your main code:
+```python
+# Main code here
+```"""
     
     @staticmethod
     def is_terminal_error(error: str) -> bool:
