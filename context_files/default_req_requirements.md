@@ -10,6 +10,12 @@
 ### Project Settings
 - **chat-size-setting**: `300`
 - **chat-mode**: `chat`
+- **chat-size-setting**: `300`
+- **chat-mode**: `terminal`
+- **chat-size-setting**: `300`
+- **chat-mode**: `terminal`
+- **chat-size-setting**: `300`
+- **chat-mode**: `terminal`
 ## Pods
 
 ### Pod Name Format

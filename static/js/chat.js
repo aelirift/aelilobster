@@ -125,6 +125,8 @@ async function loadSavedMode() {
 
 // Save mode to localStorage (project-specific) AND to requirements.md via API
 async function saveMode() {
+    console.log('[DEBUG] saveMode called from:', new Error().stack);
+    console.log('[DEBUG] saveMode current: chatMode=', chatMode, 'terminalMode=', terminalMode);
     const modeKey = getProjectStorageKey('chatMode');
     if (terminalMode) {
         localStorage.setItem(modeKey, 'terminal');
@@ -279,8 +281,10 @@ async function exitTerminalMode() {
 
 // Toggle between chat and terminal mode
 async function toggleMode() {
+    console.log('[DEBUG] toggleMode called! chatMode=', chatMode, 'terminalMode=', terminalMode);
     if (chatMode) {
         // Switch to terminal mode
+        console.log('[DEBUG] toggleMode calling enterTerminalMode!');
         await enterTerminalMode();
     } else {
         // Switch to chat mode
@@ -470,6 +474,7 @@ traceContent.addEventListener('scroll', () => {
 });
 
 function clearTrace() {
+    console.log('[DEBUG] clearTrace called!');
     traceContent.innerHTML = `
         <div class="empty-state" style="padding: 20px;">
             <p style="font-size: 12px;">Waiting for input...</p>
@@ -479,6 +484,7 @@ function clearTrace() {
     traceUserScrolledUp = false;
     traceEntries = [];
     saveTraceState();
+    console.log('[DEBUG] clearTrace: cleared local, calling backend');
     
     // Also clear the backend trace logger (both in-memory and persistent file)
     fetch('/api/trace/clear', { method: 'POST' }).catch(e => console.log('Failed to clear trace:', e));
@@ -518,6 +524,7 @@ function loadTraceState() {
     }
 }
 
+console.log('[DEBUG] traceClear event listener attached');
 traceClear.addEventListener('click', clearTrace);
 
 // Function to update project selector state based on chat status
@@ -576,25 +583,37 @@ if (newChatBtn) {
 }
 
 // Clear chat button
+console.log('[DEBUG] clearChatBtn event listener attached');
 clearChatBtn.addEventListener('click', () => {
+    console.log('[DEBUG] clearChatBtn clicked! terminalMode=', terminalMode);
     const confirmMsg = terminalMode 
         ? 'Clear all terminal history?' 
         : 'Clear all chat messages?';
     if (confirm(confirmMsg)) {
+        console.log('[DEBUG] User confirmed clear');
         messages = [];
-        // Clear only the current mode's messages - use project-specific keys
+        // Clear BOTH chat and terminal messages to ensure complete clear
         const chatKey = getProjectStorageKey('chatMessages');
         const terminalKey = getProjectStorageKey('terminalMessages');
-        if (terminalMode) {
-            localStorage.removeItem(terminalKey);
-        } else {
-            localStorage.removeItem(chatKey);
-        }
-        // Also clear trace entries with project-specific key
+        console.log('[DEBUG] Clearing chatKey=', chatKey, 'terminalKey=', terminalKey);
+        localStorage.removeItem(chatKey);
+        localStorage.removeItem(terminalKey);
+        
+        // Also clear ALL possible message keys (for any project variations)
+        // This ensures complete clear regardless of mode
+        console.log('[DEBUG] Also clearing traceKey and executionTree');
         const traceKey = getProjectStorageKey('traceEntries');
         localStorage.removeItem(traceKey);
+        
+        // Also clear execution tree
+        const treeStateKey = getProjectStorageKey('executionTree');
+        localStorage.removeItem(treeStateKey);
+        
         renderMessages();
         updateProjectSelectorState();
+        console.log('[DEBUG] Clear complete - all localStorage cleared');
+    } else {
+        console.log('[DEBUG] User cancelled clear');
     }
 });
 
@@ -631,9 +650,9 @@ async function loadState() {
     // This must happen BEFORE loading saved mode, so we use the correct project-specific key
     await loadProjects();
     
-    // Now that we have a valid project, load the saved mode
+    // Now that we have a valid project, load the saved mode - MUST await!
     console.log('[DEBUG] loadState: BEFORE loadSavedMode, terminalMode =', terminalMode);
-    loadSavedMode();
+    await loadSavedMode();
     console.log('[DEBUG] loadState: AFTER loadSavedMode, terminalMode =', terminalMode);
     
     // FIX: Removed saveMode() call here - it was overwriting the loaded mode!
@@ -684,12 +703,15 @@ async function loadState() {
     const terminalKey = getProjectStorageKey('terminalMessages');
     const traceKey = getProjectStorageKey('traceEntries');
     
+    console.log('[DEBUG] loadState: chatKey=', chatKey, 'terminalKey=', terminalKey, 'traceKey=', traceKey);
+    
     let savedMessages;
     if (terminalMode) {
         savedMessages = localStorage.getItem(terminalKey);
     } else {
         savedMessages = localStorage.getItem(chatKey);
     }
+    console.log('[DEBUG] loadState: savedMessages=', savedMessages ? 'EXISTS' : 'null');
     if (savedMessages) {
         try {
             messages = JSON.parse(savedMessages);
@@ -1349,7 +1371,13 @@ sendButton.addEventListener('click', sendMessage);
 // Mode toggle button
 const modeToggle = document.getElementById('modeToggle');
 if (modeToggle) {
-    modeToggle.addEventListener('click', toggleMode);
+    console.log('[DEBUG] modeToggle click listener attached');
+    modeToggle.addEventListener('click', (e) => {
+        console.log('[DEBUG] modeToggle CLICKED! event:', e);
+        toggleMode();
+    });
+} else {
+    console.log('[DEBUG] modeToggle NOT FOUND');
 }
 
 messageInput.addEventListener('keydown', (e) => {
@@ -2026,6 +2054,7 @@ function updateExecutionTreeFromResponse(response) {
 
 // Clear execution tree - removes all nodes and resets state
 function clearExecutionTree() {
+    console.log('[DEBUG] clearExecutionTree called!');
     // Clear all nodes from the tree
     executionTree = null;
     
