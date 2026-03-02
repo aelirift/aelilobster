@@ -3,12 +3,16 @@ Context Files Service
 Handles CRUD operations for context files stored as markdown files.
 """
 import json
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 # Context files directory
 CONTEXT_FILES_DIR = Path(__file__).parent.parent / "context_files"
 FILE_TYPES_FILE = CONTEXT_FILES_DIR / "file_types.json"
+
+# Projects directory for project-specific context files
+PROJECTS_DIR = Path(__file__).parent.parent / "user_login"
 
 # Default file types (permanent list)
 DEFAULT_FILE_TYPES = [
@@ -49,12 +53,22 @@ def get_file_types() -> List[str]:
 # Context Files CRUD
 # =============================================================================
 
-def load_context_files() -> List[Dict[str, Any]]:
-    """Load context files metadata from folder."""
+def load_context_files(project_id: str = None) -> List[Dict[str, Any]]:
+    """
+    Load context files metadata from folder.
+    
+    Args:
+        project_id: Optional project ID to load from project's proj_context folder first
+    """
     # Load defaults
     defaults = load_context_defaults()
     
     files = []
+    
+    # Collect files from both locations, preferring project-specific ones
+    file_dict = {}  # key: (name, type) -> file info
+    
+    # First, load global context files
     for md_file in CONTEXT_FILES_DIR.glob("*.md"):
         if md_file.name in ("file_types.json", "defaults.json"):
             continue
@@ -72,22 +86,59 @@ def load_context_files() -> List[Dict[str, Any]]:
                 name = stem
                 file_type = "pre-llm"
             
-            # Check if this file is the default for its type
-            is_default = defaults.get(file_type) == name
-            
-            files.append({
+            key = (name, file_type)
+            file_dict[key] = {
                 "id": f"{name}_{file_type}",
                 "name": name,
                 "type": file_type,
                 "content": content,
-                "is_default": is_default
-            })
+                "source": "global"
+            }
         except:
             pass
+    
+    # Then, load project-specific files (override global ones)
+    if project_id:
+        parts = project_id.split('-', 1)
+        if len(parts) == 2:
+            user_name, project_name = parts
+            proj_context_dir = PROJECTS_DIR / user_name / project_name / "proj_context"
+            
+            if proj_context_dir.exists():
+                for md_file in proj_context_dir.glob("*.md"):
+                    try:
+                        with open(md_file, "r") as f:
+                            content = f.read()
+                        stem = md_file.stem
+                        parts = stem.rsplit("_", 1)
+                        if len(parts) == 2:
+                            name = parts[0]
+                            file_type = parts[1]
+                        else:
+                            name = stem
+                            file_type = "pre-llm"
+                        
+                        key = (name, file_type)
+                        file_dict[key] = {
+                            "id": f"{name}_{file_type}",
+                            "name": name,
+                            "type": file_type,
+                            "content": content,
+                            "source": "project"
+                        }
+                    except:
+                        pass
+    
+    # Convert dict to list and add is_default
+    for key, file_info in file_dict.items():
+        name, file_type = key
+        file_info["is_default"] = defaults.get(file_type) == name
+        files.append(file_info)
+    
     return files
 
 
-def save_context_file(file_id: str, file_type: str, name: str, content: str) -> None:
+def save_context_file(file_id: str, file_type: str, name: str, content: str, project_id: str = None) -> None:
     """
     Save a context file to disk as .md file.
     
@@ -96,41 +147,48 @@ def save_context_file(file_id: str, file_type: str, name: str, content: str) -> 
         file_type: The type of context file
         name: The name of the file
         content: The content to save
+        project_id: Optional project ID to save in project's proj_context folder
     """
     import logging
     logger = logging.getLogger(__name__)
     
-    # First, check if there's an existing file with this file_id
-    # If found, use its existing filename to preserve it (update mode)
-    existing_filepath = None
-    for md_file in CONTEXT_FILES_DIR.glob("*.md"):
-        if md_file.stem == file_id:
-            existing_filepath = md_file
-            break
+    # Determine target directory
+    target_dir = CONTEXT_FILES_DIR
     
-    if existing_filepath:
-        # Update existing file - use its current filename
-        logger.info(f"[CONTEXT FILES SERVICE] Updating existing file: file_id={file_id}, filepath={existing_filepath}")
-        with open(existing_filepath, "w") as f:
-            f.write(content)
-        return
+    if project_id:
+        # Parse project_id (format: user-projectname)
+        parts = project_id.split('-', 1)
+        if len(parts) == 2:
+            user_name, project_name = parts
+            proj_context_dir = PROJECTS_DIR / user_name / project_name / "proj_context"
+            
+            # Create proj_context directory if it doesn't exist
+            proj_context_dir.mkdir(parents=True, exist_ok=True)
+            target_dir = proj_context_dir
+            
+            logger.info(f"[CONTEXT FILES SERVICE] Saving to project folder: project_id={project_id}, dir={target_dir}")
     
-    # No existing file found - create new file
     # Sanitize name for filename - REMOVE any type suffix if present
     safe_name = "".join(c for c in name if c.isalnum() or c in "-_").strip()
     if not safe_name:
         safe_name = "untitled"
     
     # Remove type suffix from name if it already contains it
-    # e.g., "default_pre-llm" with type "pre-llm" -> "default"
     if safe_name.endswith(f"_{file_type}"):
         safe_name = safe_name[:-len(f"_{file_type}")]
     
     # New format: {name}_{type}.md
     filename = f"{safe_name}_{file_type}.md"
-    filepath = CONTEXT_FILES_DIR / filename
     
-    logger.info(f"[CONTEXT FILES SERVICE] Creating new file: file_id={file_id}, name={name}, type={file_type}, safe_name={safe_name}, filename={filename}")
+    # Delete existing file of same type in the target directory (only for project-specific saves)
+    if project_id:
+        for md_file in target_dir.glob(f"*_{file_type}.md"):
+            logger.info(f"[CONTEXT FILES SERVICE] Deleting old file of same type: {md_file}")
+            md_file.unlink()
+    
+    filepath = target_dir / filename
+    
+    logger.info(f"[CONTEXT FILES SERVICE] Saving file: file_id={file_id}, name={name}, type={file_type}, filepath={filepath}")
     
     with open(filepath, "w") as f:
         f.write(content)

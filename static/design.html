@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container design-mode">
+        <!-- Left Navigation (Shared) -->
+        <div id="leftNaviContainer" data-current-page="design"></div>
+
+        <!-- Main Chat Area -->
+        <main class="main-content">
+            <!-- Frozen Header Bar -->
+            <div class="chat-header">
+                <button class="clear-chat-btn" id="clearChatBtn" title="Clear Chat">🗑️ Clear</button>
+                <button class="new-chat-btn" id="newChatBtn" title="New Chat">✨ New Chat</button>
+                <button class="stop-btn" id="stopButton" title="Stop">⏹️ Stop</button>
+                
+                <div class="header-item">
+                    <span class="header-label">User:</span>
+                    <span class="header-value" id="headerUser">test_user</span>
+                </div>
+                <div class="header-item" id="projectItem">
+                    <span class="header-label">Project:</span>
+                    <select id="headerProject" class="header-select">
+                        <option value="">Select Project</option>
+                    </select>
+                    <a href="/projects.html" id="createProjectLink" class="create-project-link" title="Create new project">+ New</a>
+                </div>
+                <div class="header-item">
+                    <span class="header-label">Model:</span>
+                    <select id="model" class="header-select">
+                        <option value="MiniMax-M2.5">MiniMax-M2.5</option>
+                        <option value="MiniMax-Text-01">MiniMax-Text-01</option>
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="chat-container">
+                <!-- Messages -->
+                <div class="chat-messages" id="messages">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <p>Start a design conversation</p>
+                        <p style="font-size: 12px; color: #888;">This page sends prompts directly to LLM with pre-llm context (no loops)</p>
+                    </div>
+                </div>
+
+                <!-- Input -->
+                <div class="chat-input-container">
+                    <div class="chat-input-wrapper">
+                        <textarea 
+                            class="chat-input" 
+                            id="messageInput" 
+                            placeholder="Describe what you want to build..."
+                            rows="3"
+                        ></textarea>
+                        <button class="send-button" id="sendButton">Design</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Resize Handle -->
+        <div class="resize-handle" id="resizeHandle"></div>
+
+        <!-- Combined Panel (Right Side) - Trace/Tree Toggle -->
+        <aside class="trace-panel" id="sidePanel">
+            <div class="trace-header">
+                <h3 id="panelTitle">Design Trace Log</h3>
+                <div class="trace-header-buttons">
+                    <select id="viewToggle" class="header-select" style="font-size: 11px; padding: 2px 4px;">
+                        <option value="trace">Trace</option>
+                        <option value="tree">Tree</option>
+                    </select>
+                    <button class="trace-clear" id="traceClear">Clear</button>
+                </div>
+            </div>
+            <!-- Trace Content -->
+            <div class="trace-content" id="traceContent" style="display: block;">
+                <div class="empty-state" style="padding: 20px;">
+                    <p style="font-size: 12px;">Design trace will show:</p>
+                    <ul style="font-size: 11px; padding-left: 20px; margin-top: 5px;">
+                        <li>User Prompt</li>
+                        <li>Pre-LLM Context</li>
+                        <li>LLM Request</li>
+                        <li>LLM Response</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- Tree Content -->
+            <div class="tree-content" id="treeContainer" style="display: none;">
+                <div class="empty-state" style="padding: 20px;">
+                    <p style="font-size: 12px;">Tree will show:</p>
+                    <ul style="font-size: 11px; padding-left: 20px; margin-top: 5px;">
+                        <li>Level 0: User Prompt</li>
+                        <li>Level 1: Pre-LLM Context</li>
+                        <li>Level 2: LLM Input</li>
+                        <li>Level 3: LLM Response</li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="/static/js/left_navi_panel.js"></script>
+    <script src="/static/js/design.js"></script>
+</body>
+</html>
