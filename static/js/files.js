@@ -39,27 +39,58 @@ function renderFileTypeOptions() {
 async function loadFiles() {
     try {
         const response = await fetch('/api/context-files');
-        if (!response.ok) throw new Error('Failed to load files');
-        allFiles = await response.json();
+        console.log('[FILES] Response status:', response.status, response.statusText);
+        if (!response.ok) {
+            const text = await response.text();
+            console.error('[FILES] Error response:', text);
+            throw new Error(`Failed to load files: ${response.status} ${response.statusText}`);
+        }
+        const contentType = response.headers.get('content-type');
+        console.log('[FILES] Content-Type:', contentType);
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('[FILES] Non-JSON response:', text.substring(0, 500));
+            throw new Error('Server returned non-JSON response');
+        }
+        const result = await response.json();
+        console.log('[FILES] API response:', result);
+        console.log('[FILES] Response type:', typeof result, Array.isArray(result));
+        // Handle both old array format and new object format
+        let filesData = result;
+        if (!Array.isArray(result)) {
+            filesData = result.files || [];
+        }
+        // Ensure it's an array
+        allFiles = Array.isArray(filesData) ? filesData : [];
+        console.log('[FILES] Loaded files:', allFiles.length);
         renderFiles(allFiles);
     } catch (error) {
+        console.error('[FILES] Error loading:', error);
         showStatus('Failed to load files: ' + error.message, 'error');
     }
 }
 
 function renderFiles(files) {
+    console.log('[FILES] renderFiles called with:', typeof files, Array.isArray(files), files);
+    // Ensure files is an array
+    if (!Array.isArray(files)) {
+        console.warn('[FILES] files is not an array, attempting to convert:', files);
+        files = files ? [files] : [];
+    }
+    
+    console.log('[FILES] After array check, files length:', files.length);
     if (files.length === 0) {
         filesList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No files. Click "+ New" to create one.</div>';
         return;
     }
     
-    // Sort by type then name
-    files.sort((a, b) => {
+    // Sort by type then name (create a copy to avoid mutating original)
+    const sortedFiles = [...files].sort((a, b) => {
         if (a.type !== b.type) return a.type.localeCompare(b.type);
         return a.name.localeCompare(b.name);
     });
     
-    filesList.innerHTML = files.map(file => `
+    filesList.innerHTML = sortedFiles.map(file => `
         <div class="file-item-mini ${editingFileId === file.id ? 'active' : ''}" onclick="selectFile('${file.id}')">
             <span>${escapeHtml(file.name)}</span>
             <span class="file-type-badge">${escapeHtml(file.type)}</span>

@@ -4,5 +4,6 @@
   "pre-code": "test",
   "pod": "default_pod",
   "names": "naming",
-  "requirements": "default_req"
+  "requirements": "default_req",
+  "design": "default-design"
 }

@@ -259,7 +259,16 @@ async function loadContextData() {
             fetch('/api/context-files'),
             fetch('/api/file-types')
         ]);
-        allContextFiles = await filesRes.json();
+        const filesResult = await filesRes.json();
+        console.log('[PROJECTS] Context files API response:', filesResult);
+        // Handle both old array format and new object format
+        let filesData = filesResult;
+        if (!Array.isArray(filesResult)) {
+            filesData = filesResult.files || [];
+        }
+        // Ensure it's an array
+        allContextFiles = Array.isArray(filesData) ? filesData : [];
+        console.log('[PROJECTS] Loaded context files:', allContextFiles.length);
         allFileTypes = await typesRes.json();
     } catch (error) {
         console.error('Failed to load context data:', error);
@@ -745,8 +754,29 @@ async function showProjectContextFiles(projectId) {
         getDynamicContentContainer().innerHTML = html;
         
         // Load available context files and populate dropdowns
-        const contextResponse = await fetch('/api/context-files');
-        const contextFiles = await contextResponse.json();
+        const contextResponse = await fetch(`/api/context-files?project_id=${projectId}`);
+        const contextResult = await contextResponse.json();
+        console.log('[Projects] Context files response:', contextResult);
+        
+        // Handle both old array format and new object format
+        let contextFiles = [];
+        if (Array.isArray(contextResult)) {
+            contextFiles = contextResult;
+        } else if (contextResult && typeof contextResult === 'object') {
+            contextFiles = contextResult.files || [];
+        }
+        const notification = contextResult && contextResult.notification;
+        
+        // Show notification if using global defaults
+        if (notification) {
+            showStatus(notification, 'warning');
+        }
+        
+        // Ensure allFileTypes is loaded
+        if (!allFileTypes || allFileTypes.length === 0) {
+            getDynamicContentContainer().innerHTML = '<p style="color: red;">Error: File types not loaded. Please refresh the page.</p>';
+            return;
+        }
         
         allFileTypes.forEach(fileType => {
             if (fileType === 'pod') return;
