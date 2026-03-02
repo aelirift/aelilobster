@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 import subprocess
 import re
 from pathlib import Path
-from services.run_pod_test import get_pod_name, get_pod_settings
+from services.run_pod_test import get_pod_name, get_pod_settings, allocate_port
 from services.naming import parse_project_id
 
 
@@ -230,13 +230,17 @@ def start_pod(user_name: str, project_name: str, project_path: Optional[str] = N
         work_dir = container_work_dir
         image = settings.get("shell_image", "ubuntu:latest")
         
+        # Allocate a port dynamically (check if default port is available)
+        allocated_port = allocate_port(pod_name, settings.get("default_port", 8080))
+        print(f"[PRE_LLM] Allocated port {allocated_port} for pod {pod_name}")
+        
         create_result = subprocess.run(
             [
                 'podman', 'run', '-d',
                 '--name', pod_name,
                 '-v', f'{host_path}:{container_work_dir}:Z',
                 '-w', container_work_dir,
-                '-p', f"{settings.get('default_port', 8080)}:8080",
+                '-p', f"{allocated_port}:8080",
                 image, 'tail', '-f', '/dev/null'
             ],
             capture_output=True,
@@ -501,3 +505,91 @@ def reset_project_pod(user_name: str, project_name: str, project_path: Optional[
     result["action"] = "reset_" + result.get("action", "unknown")
     
     return result
+
+
+# =============================================================================
+# Pre-LLM Context Functions
+# =============================================================================
+
+def get_pre_llm_context_content(project_id: str) -> str:
+    """
+    Get the pre-LLM context content for a project.
+    
+    This function:
+    1. Loads project context settings to find which pre-llm file to use
+    2. Loads context files (project-specific first, then global fallback)
+    3. Returns the content of the pre-llm file
+    
+    Args:
+        project_id: The project ID (format: user-projectname)
+        
+    Returns:
+        The content of the pre-LLM context file, or empty string if not found
+    """
+    from services.context_files import load_context_files, load_project_context_settings, load_context_defaults
+    
+    # Load context files (project-specific first, then global)
+    context_files = load_context_files(project_id)
+    
+    # Get project context settings to find which context files to use
+    context_settings = {}
+    if project_id:
+        context_settings = load_project_context_settings(project_id)
+        if not context_settings:
+            context_settings = load_context_defaults()
+    
+    # Get pre_llm context file name (handle both hyphen and underscore keys)
+    pre_llm_name = context_settings.get('pre_llm') or context_settings.get('pre-llm') or 'default'
+    pre_llm_file_id = f"{pre_llm_name}_pre-llm"
+    
+    # Find the matching context file
+    pre_llm_file = next((f for f in context_files if f['id'] == pre_llm_file_id), None)
+    
+    if pre_llm_file:
+        return pre_llm_file.get('content', '')
+    
+    return ""
+
+
+def prepare_design_prompt(user_prompt: str, project_id: str, chat_history: list = None) -> dict:
+    """
+    Prepare the prompt for the design chat by concatenating pre-LLM context with user prompt.
+    
+    This function:
+    1. Gets the pre-LLM context content
+    2. Concatenates: pre_llm_content + "\n\n" + user_prompt
+    3. Returns a dict with:
+       - pre_llm_content: the raw pre-llm context
+       - full_prompt: pre_llm_content + user_prompt
+       - messages: chat_history + [user message with full_prompt]
+    
+    Args:
+        user_prompt: The user's input prompt
+        project_id: The project ID
+        chat_history: Previous chat messages (list of {role, content} dicts)
+        
+    Returns:
+        Dict with pre_llm_content, full_prompt, and messages
+    """
+    # Get pre-LLM context
+    pre_llm_content = get_pre_llm_context_content(project_id)
+    
+    # Concatenate pre-LLM context with user prompt
+    if pre_llm_content:
+        full_prompt = f"{pre_llm_content}\n\nUser: {user_prompt}"
+    else:
+        full_prompt = user_prompt
+    
+    # Build messages list with chat history
+    messages = []
+    if chat_history:
+        messages.extend(chat_history)
+    
+    # Add the user message with pre-LLM context concatenated
+    messages.append({"role": "user", "content": full_prompt})
+    
+    return {
+        "pre_llm_content": pre_llm_content,
+        "full_prompt": full_prompt,
+        "messages": messages
+    }

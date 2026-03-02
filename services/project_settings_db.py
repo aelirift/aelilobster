@@ -52,12 +52,10 @@ def set_setting(project_id: str, setting_name: str, value: str):
     """Set a setting value (upsert)"""
     conn = _get_connection()
     try:
+        # Use INSERT OR REPLACE for SQLite compatibility
         conn.execute('''
-            INSERT INTO project_settings (project_id, setting_name, setting_value, updated_at)
+            INSERT OR REPLACE INTO project_settings (project_id, setting_name, setting_value, updated_at)
             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(project_id, setting_name) 
-            DO UPDATE SET setting_value = excluded.setting_value, 
-                          updated_at = CURRENT_TIMESTAMP
         ''', (project_id, setting_name, value))
         conn.commit()
     finally:

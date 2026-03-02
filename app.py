@@ -48,6 +48,7 @@ from services.looper import (
     trace_logger,
 )
 from services import trace_log
+from services import design_tree_db
 from services import pre_llm
 from services import project_settings_db
 
@@ -230,6 +231,209 @@ async def simple_chat(request: SimpleChatRequest):
         "output": llm_output,
         "model": request.model
     }
+
+# =============================================================================
+# Design Page Endpoint - Single LLM call with pre-llm context
+# =============================================================================
+
+class DesignRequest(BaseModel):
+    prompt: str
+    model: str = "MiniMax-M2.5"
+    project_id: Optional[str] = None
+    messages: List[Dict[str, str]] = []
+
+class PreLLMContext(BaseModel):
+    content: str
+
+@app.get("/api/design/pre-llm-context")
+async def get_design_pre_llm_context(project_id: str = None):
+    """Get pre-LLM context for design page"""
+    try:
+        # Get context files (pass project_id to check project folder first)
+        context_files = context_files_service.load_context_files(project_id)
+        
+        # Get project context settings to find which context files to use
+        context_settings = {}
+        if project_id:
+            context_settings = context_files_service.load_project_context_settings(project_id)
+            if not context_settings:
+                context_settings = context_files_service.load_context_defaults()
+        
+        # Get pre_llm context file (handle both hyphen and underscore keys)
+        pre_llm_name = context_settings.get('pre_llm') or context_settings.get('pre-llm') or 'default'
+        pre_llm_file_id = f"{pre_llm_name}_pre-llm"
+        
+        print(f"[DEBUG] project_id={project_id}, context_settings={context_settings}, pre_llm_name={pre_llm_name}, pre_llm_file_id={pre_llm_file_id}")
+        
+        pre_llm_file = next((f for f in context_files if f['id'] == pre_llm_file_id), None)
+        
+        context_content = ""
+        if pre_llm_file:
+            context_content = pre_llm_file.get('content', '')
+        
+        return {"pre_llm_context": context_content}
+    except Exception as e:
+        return {"pre_llm_context": "", "error": str(e)}
+
+@app.post("/api/design")
+async def design_chat(request: DesignRequest):
+    """
+    Design page endpoint - single LLM call with pre-llm context.
+    
+    Uses the pre_llm service to:
+    1. Look up the pre-llm context md file based on project settings
+    2. Concatenate pre-llm content + user prompt
+    3. Append to chat history and send to LLM
+    
+    Returns trace info for display.
+    """
+    # Use pre_llm service to prepare the prompt with context
+    prep_result = pre_llm.prepare_design_prompt(
+        user_prompt=request.prompt,
+        project_id=request.project_id,
+        chat_history=request.messages
+    )
+    
+    pre_llm_content = prep_result["pre_llm_content"]
+    messages = prep_result["messages"]
+    
+    # Get API key
+    if "minimax" in request.model.lower():
+        api_key = get_api_key("minimax")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="MiniMax API key not configured")
+    else:
+        api_key = get_api_key("openai")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="OpenAI API key not configured")
+    
+    # Call LLM
+    result = await llm_providers.call_llm(
+        request.model,
+        messages,
+        0.7,
+        4096,
+        api_key
+    )
+    
+    llm_output = result["choices"][0]["message"]["content"]
+    
+    return {
+        "type": "design",
+        "output": llm_output,
+        "model": request.model,
+        "trace": {
+            "user_prompt": request.prompt,
+            "pre_llm_context": pre_llm_content,
+            "llm_request": messages,
+            "llm_response": llm_output
+        }
+    }
+
+# =============================================================================
+# Design Tree API Endpoints
+# =============================================================================
+
+class DesignTreeNodeRequest(BaseModel):
+    project_id: str
+    user_id: str
+    prompt_id: str
+    level: int
+    content: str = ''
+    description: str = ''
+    node_state: str = 'incomplete'
+    parent_node_id: Optional[str] = None
+
+
+class DesignTreeUpdateRequest(BaseModel):
+    node_id: str
+    content: Optional[str] = None
+    description: Optional[str] = None
+    node_state: Optional[str] = None
+
+
+@app.post("/api/design-tree/nodes")
+async def create_design_node(request: DesignTreeNodeRequest):
+    """Create a new design tree node"""
+    try:
+        print(f"[API] Creating design tree node: project_id={request.project_id}, user_id={request.user_id}, prompt_id={request.prompt_id}, level={request.level}")
+        node = design_tree_db.create_node(
+            project_id=request.project_id,
+            user_id=request.user_id,
+            prompt_id=request.prompt_id,
+            level=request.level,
+            content=request.content,
+            description=request.description,
+            node_state=request.node_state,
+            parent_node_id=request.parent_node_id
+        )
+        print(f"[API] Created node: {node}")
+        return {"success": True, "node": node}
+    except Exception as e:
+        print(f"[API] Error creating node: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/design-tree/nodes/{node_id}")
+async def update_design_node(node_id: str, request: DesignTreeUpdateRequest):
+    """Update a design tree node"""
+    try:
+        node = design_tree_db.update_node(
+            node_id=node_id,
+            content=request.content,
+            description=request.description,
+            node_state=request.node_state
+        )
+        if not node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        return {"success": True, "node": node}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/design-tree/nodes/{node_id}")
+async def get_design_node(node_id: str):
+    """Get a design tree node by ID"""
+    node = design_tree_db.get_node(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return node
+
+
+@app.get("/api/design-tree/prompts/{project_id}/{user_id}")
+async def get_prompt_ids(project_id: str, user_id: str):
+    """Get all prompt IDs for a project/user"""
+    try:
+        prompt_ids = design_tree_db.get_all_prompts(project_id, user_id)
+        return {"prompt_ids": prompt_ids}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/design-tree/{project_id}/{user_id}/{prompt_id}")
+async def get_prompt_tree(project_id: str, user_id: str, prompt_id: str):
+    """Get all nodes for a specific prompt"""
+    try:
+        print(f"[API] Fetching tree: project_id={project_id}, user_id={user_id}, prompt_id={prompt_id}")
+        nodes = design_tree_db.get_prompt_nodes(project_id, user_id, prompt_id)
+        print(f"[API] Found {len(nodes)} nodes")
+        return {"nodes": nodes}
+    except Exception as e:
+        print(f"[API] Error fetching tree: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/design-tree/{project_id}/{user_id}/{prompt_id}")
+async def delete_prompt_tree(project_id: str, user_id: str, prompt_id: str):
+    """Delete all nodes for a specific prompt"""
+    try:
+        design_tree_db.delete_prompt_nodes(project_id, user_id, prompt_id)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # =============================================================================
 # Process Prompt Endpoint
@@ -559,6 +763,10 @@ async def serve_agents():
 @app.get("/command.html")
 async def serve_command():
     return FileResponse("static/command.html")
+
+@app.get("/design.html")
+async def serve_design():
+    return FileResponse("static/design.html")
 
 @app.get("/static/{file_path:path}")
 async def serve_static(file_path: str):
@@ -1126,6 +1334,7 @@ async def delete_project_secret(project_id: str, secret_id: str):
 class ProjectSettings(BaseModel):
     chat_mode: Optional[str] = None  # "chat" or "terminal"
     trace_panel_width: Optional[int] = None
+    design_page_panel_size: Optional[str] = None
 
 
 def _parse_settings_from_context_file(content: str) -> Dict[str, Any]:
@@ -1237,6 +1446,8 @@ async def get_project_settings(project_id: str):
             settings['chat_mode'] = db_settings['chat_mode']
         if 'chat_window_size' in db_settings:
             settings['chat_window_size'] = db_settings['chat_window_size']
+        if 'design_page_panel_size' in db_settings:
+            settings['design_page_panel_size'] = db_settings['design_page_panel_size']
         
         # For other settings, fall back to context file
         context_settings = context_files_service.load_project_context_settings(project_id)
@@ -1266,12 +1477,18 @@ async def get_project_settings(project_id: str):
 @app.put("/api/projects/{project_id}/settings")
 async def update_project_settings(project_id: str, settings: ProjectSettings):
     """Update project settings - save chat_mode/chat_window_size to database, others to context file."""
+    print(f"[DEBUG] PUT /api/projects/{project_id}/settings called with: {settings}")
     try:
         # Save chat_mode and chat_window_size to DATABASE (not context file)
         if settings.chat_mode is not None:
+            print(f"[DEBUG] Saving chat_mode: {settings.chat_mode}")
             project_settings_db.set_setting(project_id, 'chat_mode', settings.chat_mode)
         if settings.trace_panel_width is not None:
+            print(f"[DEBUG] Saving trace_panel_width: {settings.trace_panel_width}")
             project_settings_db.set_setting(project_id, 'chat_window_size', str(settings.trace_panel_width))
+        if settings.design_page_panel_size is not None:
+            print(f"[DEBUG] Saving design_page_panel_size: {settings.design_page_panel_size}")
+            project_settings_db.set_setting(project_id, 'design_page_panel_size', settings.design_page_panel_size)
         
         # For other settings, still save to context file
         context_settings = context_files_service.load_project_context_settings(project_id)
