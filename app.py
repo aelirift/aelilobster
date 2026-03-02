@@ -250,7 +250,13 @@ async def get_design_pre_llm_context(project_id: str = None):
     """Get pre-LLM context for design page"""
     try:
         # Get context files (pass project_id to check project folder first)
-        context_files = context_files_service.load_context_files(project_id)
+        result = context_files_service.load_context_files(project_id)
+        
+        # Handle both old list format and new dict format
+        if isinstance(result, dict):
+            context_files = result.get("files", [])
+        else:
+            context_files = result
         
         # Get project context settings to find which context files to use
         context_settings = {}
@@ -265,13 +271,22 @@ async def get_design_pre_llm_context(project_id: str = None):
         
         print(f"[DEBUG] project_id={project_id}, context_settings={context_settings}, pre_llm_name={pre_llm_name}, pre_llm_file_id={pre_llm_file_id}")
         
-        pre_llm_file = next((f for f in context_files if f['id'] == pre_llm_file_id), None)
+        pre_llm_file = next((f for f in context_files if f.get('id') == pre_llm_file_id), None)
         
         context_content = ""
+        file_status = "no_file"  # no file found
         if pre_llm_file:
             context_content = pre_llm_file.get('content', '')
+            if context_content:
+                file_status = "loaded"  # file has content
+            else:
+                file_status = "blank"  # file exists but empty
         
-        return {"pre_llm_context": context_content}
+        return {
+            "pre_llm_context": context_content,
+            "file_name": pre_llm_name,
+            "file_status": file_status
+        }
     except Exception as e:
         return {"pre_llm_context": "", "error": str(e)}
 
@@ -620,7 +635,13 @@ async def run_looper(request: LooperRequest):
     call_llm_func = llm_providers.get_llm_call_function(request.model, api_key)
     
     # Load context files (debugger context)
-    context_files = context_files_service.load_context_files()
+    context_result = context_files_service.load_context_files()
+    
+    # Handle both old list format and new dict format
+    if isinstance(context_result, dict):
+        context_files = context_result.get("files", [])
+    else:
+        context_files = context_result
     
     # Ensure pre-llm context is always included in the system prompt
     # This guarantees the pre-llm instructions are always part of LLM calls
@@ -845,6 +866,7 @@ class ContextFileRequest(BaseModel):
     name: str
     type: str
     content: str
+    project_id: str = None
 
 
 @app.get("/api/file-types")
@@ -854,9 +876,14 @@ async def get_file_types_endpoint():
 
 
 @app.get("/api/context-files")
-async def get_context_files():
+async def get_context_files(project_id: str = None):
     """Get all context files."""
-    return context_files_service.load_context_files()
+    result = context_files_service.load_context_files(project_id)
+    # Handle both old list format and new dict format
+    if isinstance(result, dict):
+        return result
+    else:
+        return {"files": result, "notification": None}
 
 
 @app.post("/api/context-files")
@@ -866,27 +893,36 @@ async def add_context_file(file: ContextFileRequest):
     file_id = f"{file.name}_{file.type}"
     
     # Check if file already exists
-    existing_files = context_files_service.load_context_files()
-    existing_file = next((f for f in existing_files if f["id"] == file_id), None)
+    existing_result = context_files_service.load_context_files()
+    if isinstance(existing_result, dict):
+        existing_files = existing_result.get("files", [])
+    else:
+        existing_files = existing_result
+    existing_file = next((f for f in existing_files if f.get("id") == file_id), None)
     
+    notification = None
     if existing_file:
         # Update existing file instead of creating duplicate
-        context_files_service.save_context_file(file_id, file.type, file.name, file.content)
+        result = context_files_service.save_context_file(file_id, file.type, file.name, file.content, file.project_id)
+        notification = result.get("notification")
         return {
             "id": file_id,
             "name": file.name,
             "type": file.type,
             "content": file.content,
-            "status": "updated"
+            "status": "updated",
+            "notification": notification
         }
     
-    context_files_service.save_context_file(file_id, file.type, file.name, file.content)
+    result = context_files_service.save_context_file(file_id, file.type, file.name, file.content, file.project_id)
+    notification = result.get("notification")
     return {
         "id": file_id,
         "name": file.name,
         "type": file.type,
         "content": file.content,
-        "status": "created"
+        "status": "created",
+        "notification": notification
     }
 
 
@@ -905,8 +941,12 @@ async def update_context_file(file_id: str, file: ContextFileRequest):
     if new_file_id != file_id:
         logger.info(f"[CONTEXT FILES] ID changed, deleting old file: {file_id}")
         # First, check if a file already exists with the new ID
-        existing_files = context_files_service.load_context_files()
-        existing_file = next((f for f in existing_files if f["id"] == new_file_id), None)
+        existing_result = context_files_service.load_context_files()
+        if isinstance(existing_result, dict):
+            existing_files = existing_result.get("files", [])
+        else:
+            existing_files = existing_result
+        existing_file = next((f for f in existing_files if f.get("id") == new_file_id), None)
         
         if existing_file:
             logger.info(f"[CONTEXT FILES] Conflicting file found, deleting: {new_file_id}")
@@ -918,12 +958,14 @@ async def update_context_file(file_id: str, file: ContextFileRequest):
     
     # Save the file (either with new ID or same ID)
     logger.info(f"[CONTEXT FILES] Saving file: {new_file_id}")
-    context_files_service.save_context_file(new_file_id, file.type, file.name, file.content)
+    result = context_files_service.save_context_file(new_file_id, file.type, file.name, file.content, file.project_id)
+    notification = result.get("notification")
     return {
         "id": new_file_id,
         "name": file.name,
         "type": file.type,
-        "content": file.content
+        "content": file.content,
+        "notification": notification
     }
 
 
@@ -960,8 +1002,70 @@ async def get_project_context_settings(project_id: str):
 @app.post("/api/projects/{project_id}/context-settings")
 async def update_project_context_settings(project_id: str, settings: Dict[str, str]):
     """Update context file settings for a project."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Save the settings first
     context_files_service.save_project_context_settings(project_id, settings)
-    return {"status": "success", "project_id": project_id, "settings": settings}
+    
+    # Now copy all selected context files to the proj_context folder
+    try:
+        # Load all available context files
+        result = context_files_service.load_context_files()
+        if isinstance(result, dict):
+            all_files = result.get("files", [])
+        else:
+            all_files = result
+        
+        # Create a lookup by name and type
+        files_by_name_type = {}
+        for f in all_files:
+            key = (f.get("name"), f.get("type"))
+            files_by_name_type[key] = f
+        
+        # First, clear the proj_context folder once
+        # We need to do this before saving any files
+        parts = project_id.split('-', 1)
+        if len(parts) == 2:
+            from pathlib import Path
+            user_name, project_name = parts
+            PROJECTS_DIR = Path(__file__).parent / "user_login"
+            proj_context_dir = PROJECTS_DIR / user_name / project_name / "proj_context"
+            if proj_context_dir.exists():
+                for md_file in proj_context_dir.glob("*.md"):
+                    logger.info(f"[CONTEXT] Clearing old file: {md_file}")
+                    md_file.unlink()
+        
+        # For each setting (file_type -> selected_name), copy the file to proj_context
+        files_copied = 0
+        for file_type, selected_name in settings.items():
+            if file_type == 'pod' or not selected_name:
+                continue
+            
+            key = (selected_name, file_type)
+            source_file = files_by_name_type.get(key)
+            
+            if source_file:
+                # Save this file to the project's proj_context folder
+                # Use clear_existing=False since we already cleared above
+                context_files_service.save_context_file(
+                    file_id=source_file.get("id"),
+                    file_type=file_type,
+                    name=selected_name,
+                    content=source_file.get("content", ""),
+                    project_id=project_id,
+                    clear_existing=False
+                )
+                logger.info(f"[CONTEXT] Copied {selected_name}_{file_type} to project {project_id}")
+                files_copied += 1
+            else:
+                logger.warning(f"[CONTEXT] Could not find source file for {selected_name}_{file_type}")
+        
+        return {"status": "success", "project_id": project_id, "settings": settings, "files_copied": files_copied}
+    except Exception as e:
+        logger.error(f"[CONTEXT] Error copying context files: {e}")
+        # Still return success since settings were saved
+        return {"status": "success", "project_id": project_id, "settings": settings, "error": str(e)}
 
 # =============================================================================
 # Projects Endpoints
@@ -1458,8 +1562,12 @@ async def get_project_settings(project_id: str):
         
         if requirements_name:
             requirements_file_id = f"{requirements_name}_requirements"
-            context_files = context_files_service.load_context_files()
-            req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
+            context_result = context_files_service.load_context_files()
+            if isinstance(context_result, dict):
+                context_files = context_result.get("files", [])
+            else:
+                context_files = context_result
+            req_file = next((f for f in context_files if f.get('id') == requirements_file_id), None)
             
             if req_file:
                 file_settings = _parse_settings_from_context_file(req_file.get('content', ''))
@@ -1500,8 +1608,12 @@ async def update_project_settings(project_id: str, settings: ProjectSettings):
         existing_settings = {}
         if requirements_name:
             requirements_file_id = f"{requirements_name}_requirements"
-            context_files = context_files_service.load_context_files()
-            req_file = next((f for f in context_files if f['id'] == requirements_file_id), None)
+            context_result = context_files_service.load_context_files()
+            if isinstance(context_result, dict):
+                context_files = context_result.get("files", [])
+            else:
+                context_files = context_result
+            req_file = next((f for f in context_files if f.get('id') == requirements_file_id), None)
             
             if req_file:
                 existing_settings = _parse_settings_from_context_file(req_file.get('content', ''))

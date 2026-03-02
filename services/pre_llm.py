@@ -517,7 +517,7 @@ def get_pre_llm_context_content(project_id: str) -> str:
     
     This function:
     1. Loads project context settings to find which pre-llm file to use
-    2. Loads context files (project-specific first, then global fallback)
+    2. Loads context files from project folder ONLY (no global fallback)
     3. Returns the content of the pre-llm file
     
     Args:
@@ -526,27 +526,38 @@ def get_pre_llm_context_content(project_id: str) -> str:
     Returns:
         The content of the pre-LLM context file, or empty string if not found
     """
-    from services.context_files import load_context_files, load_project_context_settings, load_context_defaults
+    from services.context_files import load_project_only_context_files, load_project_context_settings, load_context_defaults
     
-    # Load context files (project-specific first, then global)
-    context_files = load_context_files(project_id)
+    # Load context files from PROJECT FOLDER ONLY (no global fallback)
+    context_files = load_project_only_context_files(project_id)
+    
+    print(f"[PRE_LLM DEBUG] project_id={project_id}, project context_files count={len(context_files)}")
     
     # Get project context settings to find which context files to use
     context_settings = {}
     if project_id:
         context_settings = load_project_context_settings(project_id)
+        print(f"[PRE_LLM DEBUG] project_settings for {project_id}: {context_settings}")
         if not context_settings:
             context_settings = load_context_defaults()
+            print(f"[PRE_LLM DEBUG] fell back to defaults: {context_settings}")
     
     # Get pre_llm context file name (handle both hyphen and underscore keys)
     pre_llm_name = context_settings.get('pre_llm') or context_settings.get('pre-llm') or 'default'
     pre_llm_file_id = f"{pre_llm_name}_pre-llm"
     
-    # Find the matching context file
-    pre_llm_file = next((f for f in context_files if f['id'] == pre_llm_file_id), None)
+    print(f"[PRE_LLM DEBUG] pre_llm_name={pre_llm_name}, pre_llm_file_id={pre_llm_file_id}")
+    print(f"[PRE_LLM DEBUG] available files: {[f.get('id') for f in context_files]}")
+    
+    # Find the matching context file (use get to avoid KeyError)
+    pre_llm_file = next((f for f in context_files if f.get('id') == pre_llm_file_id), None)
+    
+    print(f"[PRE_LLM DEBUG] found file: {pre_llm_file}")
     
     if pre_llm_file:
-        return pre_llm_file.get('content', '')
+        content = pre_llm_file.get('content', '')
+        print(f"[PRE_LLM DEBUG] content length: {len(content)}")
+        return content
     
     return ""
 

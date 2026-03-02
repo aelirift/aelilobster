@@ -5,11 +5,12 @@
   "default_user": "test_user",
   "project_context_settings": {
     "test_user-testdesign1": {
-      "pre-llm": "design_mode_default",
+      "pre-llm": "blank",
       "pre-code": "test",
       "debugger": "default",
       "names": "naming",
-      "requirements": "default_req"
+      "requirements": "default_req",
+      "design": "default-design"
     }
   }
 }

@@ -20,8 +20,6 @@ shell_image: "ubuntu:latest"
 # Default working directory in container
 work_dir: "/tmp"
 
-# Default port for web server
-default_port: 8080
 
 ## Startup Commands
 # Commands to run when container is first created (to install dependencies)

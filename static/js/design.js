@@ -6,6 +6,8 @@ let projectId = null;
 let userId = 'test_user';
 let promptId = null;  // Unique ID for this conversation
 let preLLMContext = "";
+let preLLMFileName = "default";  // Name of the pre-LLM context file
+let preLLMFileStatus = "no_file";  // 'loaded', 'blank', or 'no_file'
 
 // For stopping requests
 let currentController = null;
@@ -419,10 +421,14 @@ async function loadPreLLMContext() {
         const response = await fetch(`/api/design/pre-llm-context?project_id=${project || ''}`);
         const data = await response.json();
         preLLMContext = data.pre_llm_context || "";
-        console.log('[Design] Loaded pre-LLM context:', preLLMContext.substring(0, 100) + '...');
+        preLLMFileName = data.file_name || 'default';
+        preLLMFileStatus = data.file_status || 'no_file';  // 'loaded', 'blank', or 'no_file'
+        console.log('[Design] Loaded pre-LLM context:', preLLMContext.substring(0, 100) + '...', 'file:', preLLMFileName, 'status:', preLLMFileStatus);
     } catch (e) {
         console.error('[Design] Failed to load pre-LLM context:', e);
         preLLMContext = "";
+        preLLMFileName = 'unknown';
+        preLLMFileStatus = 'no_file';
     }
 }
 
@@ -494,10 +500,22 @@ async function sendDesignMessage() {
     }
     
     // === CREATE LEVEL 1 NODE (Pre-LLM Context) ===
-    const level1Node = await createTreeNode(1, preLLMContext || '', 'pre_llm_context', 'complete', level0Node.node_id);
+    // Determine status message based on file_status from API
+    let preLLMStatusMsg = '';
+    if (preLLMFileStatus === 'loaded') {
+        // File has content - show actual content
+        preLLMStatusMsg = preLLMContext;
+    } else if (preLLMFileStatus === 'blank') {
+        // File exists but is empty
+        preLLMStatusMsg = `(blank context file: ${preLLMFileName})`;
+    } else {
+        // No file found
+        preLLMStatusMsg = `(No context file: ${preLLMFileName})`;
+    }
+    const level1Node = await createTreeNode(1, preLLMStatusMsg, 'pre_llm_context', 'complete', level0Node.node_id);
     
-    // Add to trace - Pre-LLM Context
-    addDesignTrace('context', 'Pre-LLM Context', preLLMContext || "(No context file)");
+    // Add to trace - Pre-LLM Context (same content as tree view)
+    addDesignTrace('context', 'Pre-LLM Context', preLLMStatusMsg);
     
     // Prepare full input for LLM
     const fullLLMInput = (preLLMContext ? preLLMContext + '\n\n' : '') + 'User: ' + prompt;
@@ -639,7 +657,39 @@ function formatMessageContent(content) {
 
 // Clear chat
 async function clearDesignChat() {
+    console.log('[Design] clearDesignChat called, isProcessing:', isProcessing, 'currentController:', currentController ? 'set' : 'null');
+    
     if (confirm('Clear design chat history?')) {
+        // Stop any in-flight requests first
+        if (isProcessing || currentController) {
+            console.log('[Design] Stopping in-flight request before clearing chat');
+            stopTreePoll();
+            if (currentController) {
+                currentController.abort();
+                currentController = null;
+            }
+            isProcessing = false;
+            
+            // Reset UI - hide stop button, enable input
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const stopButton = document.getElementById('stopButton');
+            if (messageInput) messageInput.disabled = false;
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.textContent = 'Design';
+            }
+            if (stopButton) stopButton.style.display = 'none';
+        }
+        
+        // Reset promptId to get fresh conversation ID
+        promptId = null;
+        
+        // Reset preLLMContext and file info to force reload on next message
+        preLLMContext = "";
+        preLLMFileName = "default";
+        preLLMFileStatus = "no_file";
+        
         messages = [];
         renderMessages();
 
